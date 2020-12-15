@@ -70,9 +70,47 @@ export class Teyvat {
   getCharacterProfiles!: (
     options?: baseOptions
   ) => Promise<teyvatdev.CharacterProfile[] | undefined>;
+  _lastRequest!: number;
+  _quota!: number;
+  _quotaMax!: number;
+  _gracePeriod!: number;
+  _retry!: () => Promise<void>;
+  _reset!: number;
   constructor(token: TeyvatToken) {
     this._token = token;
     this.base = 'https://rest.teyvat.dev/';
+    this._lastRequest = Date.now();
+    this._quota = 0;
+    this._quotaMax = 100;
+    this._gracePeriod = 15 * 60 * 1000;
+    this._reset = Date.now();
+    (async () => {
+      let fetchRates = await axios.get(this.base + 'character', {
+        headers: {
+          Authorization: 'Bearer ' + this._token,
+        },
+        params: {
+          name: 'Amber',
+        },
+      });
+      if (fetchRates) {
+        if (fetchRates.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = fetchRates.headers['x-ratelimit-remaining'];
+        if (fetchRates.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = fetchRates.headers['x-ratelimit-limit'];
+        if (fetchRates.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = fetchRates.headers['x-ratelimit-reset'];
+      }
+    })();
+    this._retry = () => {
+      return new Promise((resolve, reject) => {
+        if (Date.now() > this._reset) resolve();
+        else
+          setTimeout(() => {
+            resolve();
+          }, this._reset - Date.now());
+      });
+    };
     this.getCharacter = async function getCharacter(
       name: string,
       /**
@@ -81,6 +119,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Character | undefined> {
+      if (this._quota < 4) await this._retry();
+      else this._quota--;
       let data = undefined;
       try {
         data = await axios.get(this.base + 'character', {
@@ -96,6 +136,9 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data.headers['x-ratelimit-reset'])
+        this._reset = data.headers['x-ratelimit-reset'];
+      console.log(data);
       return data?.data as undefined | teyvatdev.Character;
     };
     this.getCharacters = async function getCharacters(
