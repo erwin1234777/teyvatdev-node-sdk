@@ -73,6 +73,32 @@ export class Teyvat {
   //TEYVAT token
   private _token!: TeyvatToken;
   //all methods below this point
+  //each cache has an index of null, which is assigned to the default caller for the methods that dont require parameters. AKA getCharacters(), without parameter options.
+  //TODO Add lifetime for the cached requests so they can be refreshed, in case there are any updates in the API's database, a setInterval every couple hours would be preferred over checking on every request has reached its lifetime
+  private _charactersCache!: Map<
+    string | null,
+    teyvatdev.Character | teyvatdev.Character[]
+  >;
+  private _weaponsCache!: Map<
+    string | null,
+    teyvatdev.Weapon | teyvatdev.Weapon[]
+  >;
+  private _regionsCache!: Map<
+    string | null,
+    teyvatdev.Region | teyvatdev.Region[]
+  >;
+  private _elementsCache!: Map<
+    string | null,
+    teyvatdev.Element | teyvatdev.Element[]
+  >;
+  private _talentsCache!: Map<
+    string | null,
+    teyvatdev.Talent | teyvatdev.Talent[]
+  >;
+  private _charactersProfilesCache!: Map<
+    string | null,
+    teyvatdev.CharacterProfile | teyvatdev.CharacterProfile[]
+  >;
   public getCharacter!: (
     name: string,
     options?: baseOptions
@@ -140,6 +166,13 @@ export class Teyvat {
     this._quotaMax = 100;
     this._gracePeriod = 15 * 60 * 1000;
     this._reset = Math.ceil(Date.now() / 1000) + 900;
+    this._charactersCache = new Map();
+    this._weaponsCache = new Map();
+    this._regionsCache = new Map();
+    this._elementsCache = new Map();
+    this._talentsCache = new Map();
+    this._charactersProfilesCache = new Map();
+
     (async () => {
       let fetchRates = await axios.get(this.base + 'character', {
         headers: {
@@ -171,6 +204,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Character | undefined> {
+      //checking if cache has that character
+      if (this._charactersCache.has(name) && !options)
+        return this._charactersCache.get(name)! as teyvatdev.Character;
+      //checking for quota, if its lower than 4, wait until next reset
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -197,6 +234,8 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //if data has been returned(aka not null) and there are no custom options, set cache
+        if (data.data && !options) this._charactersCache.set(name, data.data);
       }
       return data?.data as undefined | teyvatdev.Character;
     };
@@ -207,6 +246,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Character[] | undefined> {
+      //ensures that if theres already been a search on _charactersCache that it saves up on a request;
+      if (this._charactersCache.has(null) && !options)
+        return this._charactersCache.get(null)! as teyvatdev.Character[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -232,6 +275,14 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (!options && data.data) {
+          this._charactersCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.Character[]
+          );
+          for (let d of data.data) this._charactersCache.set(d.id, d);
+        }
       }
       return data?.data as undefined | teyvatdev.Character[];
     };
@@ -243,6 +294,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Weapon | undefined> {
+      //checking if cache has that character
+      if (this._weaponsCache.has(id) && !options)
+        return this._weaponsCache.get(id)! as teyvatdev.Weapon;
+      //checking for quota, if its lower than 4, wait until next reset
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -268,6 +323,8 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //if data has been returned(aka not null) and there are no custom options, set cache
+        if (data.data && !options) this._weaponsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Weapon;
     };
@@ -278,6 +335,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Weapon[] | undefined> {
+      //ensures that if theres already been a search on _cweaponsCache that it saves up on a request;
+      if (this._weaponsCache.has(null) && !options)
+        return this._weaponsCache.get(null)! as teyvatdev.Weapon[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -303,6 +364,14 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (!options && data.data) {
+          this._weaponsCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.Weapon[]
+          );
+          for (let d of data.data) this._weaponsCache.set(d.id, d);
+        }
       }
       return data?.data as undefined | teyvatdev.Weapon[];
     };
@@ -314,6 +383,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Region | undefined> {
+      //checking if cache has that character
+      if (this._regionsCache.has(id) && !options)
+        return this._regionsCache.get(id)! as teyvatdev.Region;
+      //checking for quota, if its lower than 4, wait until next reset
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -339,6 +412,8 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //if data has been returned(aka not null) and there are no custom options, set cache
+        if (data.data && !options) this._regionsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Region;
     };
@@ -349,6 +424,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Region[] | undefined> {
+      //ensures that if theres already been a search on _regionCache that it saves up on a request;
+      if (this._regionsCache.has(null) && !options)
+        return this._regionsCache.get(null)! as teyvatdev.Region[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -374,6 +453,14 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (!options && data.data) {
+          this._regionsCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.Region[]
+          );
+          for (let d of data.data) this._regionsCache.set(d.id, d);
+        }
       }
       return data?.data as undefined | teyvatdev.Region[];
     };
@@ -385,6 +472,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Element | undefined> {
+      //checking if cache has that character
+      if (this._elementsCache.has(id) && !options)
+        return this._elementsCache.get(id)! as teyvatdev.Element;
+      //checking for quota, if its lower than 4, wait until next reset
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -410,6 +501,8 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //if data has been returned(aka not null) and there are no custom options, set cache
+        if (data.data && !options) this._elementsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Element;
     };
@@ -420,6 +513,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Element[] | undefined> {
+      //ensures that if theres already been a search on _elementsCache that it saves up on a request;
+      if (this._elementsCache.has(null) && !options)
+        return this._elementsCache.get(null)! as teyvatdev.Element[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -445,6 +542,14 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (!options && data.data) {
+          this._elementsCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.Element[]
+          );
+          for (let d of data.data) this._elementsCache.set(d.id, d);
+        }
       }
       return data?.data as undefined | teyvatdev.Element[];
     };
@@ -456,6 +561,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Talent | undefined> {
+      //checking if cache has that character
+      if (this._talentsCache.has(id) && !options)
+        return this._talentsCache.get(id)! as teyvatdev.Talent;
+      //checking for quota, if its lower than 4, wait until next reset
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -481,6 +590,8 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //if data has been returned(aka not null) and there are no custom options, set cache
+        if (data.data && !options) this._talentsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Talent;
     };
@@ -491,6 +602,10 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Talent[] | undefined> {
+      //ensures that if theres already been a search on _talentsCache that it saves up on a request;
+      if (this._talentsCache.has(null) && !options)
+        return this._talentsCache.get(null)! as teyvatdev.Talent[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -516,6 +631,14 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (!options && data.data) {
+          this._talentsCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.Talent[]
+          );
+          for (let d of data.data) this._talentsCache.set(d.id, d);
+        }
       }
       return data?.data as undefined | teyvatdev.Talent[];
     };
@@ -527,6 +650,12 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.CharacterProfile | undefined> {
+      //checking if cache has that character
+      if (this._charactersProfilesCache.has(id) && !options)
+        return this._charactersProfilesCache.get(
+          id
+        )! as teyvatdev.CharacterProfile;
+      //checking for quota, if its lower than 4, wait until next reset
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -552,6 +681,9 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //if data has been returned(aka not null) and there are no custom options, set cache
+        if (data.data && !options)
+          this._charactersProfilesCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.CharacterProfile;
     };
@@ -562,6 +694,12 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.CharacterProfile[] | undefined> {
+      //ensures that if theres already been a search on _charactersProfilesCache that it saves up on a request;
+      if (this._charactersProfilesCache.has(null) && !options)
+        return this._charactersProfilesCache.get(
+          null
+        )! as teyvatdev.CharacterProfile[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
       if (this._quota < 4)
         await this._retry(
           Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
@@ -587,6 +725,14 @@ export class Teyvat {
           this._quotaMax = data.headers['x-ratelimit-limit'];
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (!options && data.data) {
+          this._charactersProfilesCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.CharacterProfile[]
+          );
+          for (let d of data.data) this._charactersProfilesCache.set(d.id, d);
+        }
       }
       return data?.data as undefined | teyvatdev.CharacterProfile[];
     };
