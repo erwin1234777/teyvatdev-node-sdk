@@ -69,15 +69,15 @@ type TeyvatToken = string;
  */
 export class Teyvat {
   //Base URL
-  base!: string;
+  readonly base!: string;
   //TEYVAT token
-  _token!: TeyvatToken;
+  private _token!: TeyvatToken;
   //all methods below this point
-  getCharacter!: (
+  public getCharacter!: (
     name: string,
     options?: baseOptions
   ) => Promise<teyvatdev.Character | undefined>;
-  getCharacters!: (
+  public getCharacters!: (
     options?: baseOptions
   ) => Promise<teyvatdev.Character[] | undefined>;
   /**
@@ -85,53 +85,53 @@ export class Teyvat {
    * CAREFULL //TODO path's are going to be deprecated in favor of params, make sure the path exists or you'll get 404's, use ID's
    *
    */
-  getWeapon!: (
+  public getWeapon!: (
     name: string,
     options?: baseOptions
   ) => Promise<teyvatdev.Weapon | undefined>;
-  getWeapons!: (
+  public getWeapons!: (
     options?: baseOptions
   ) => Promise<teyvatdev.Weapon[] | undefined>;
-  getRegion!: (
+  public getRegion!: (
     id: CUID,
     options?: baseOptions
   ) => Promise<teyvatdev.Region | undefined>;
-  getRegions!: (
+  public getRegions!: (
     options?: baseOptions
   ) => Promise<teyvatdev.Region[] | undefined>;
-  getElement!: (
+  public getElement!: (
     id: CUID,
     options?: baseOptions
   ) => Promise<teyvatdev.Region | undefined>;
-  getElements!: (
+  public getElements!: (
     options?: baseOptions
   ) => Promise<teyvatdev.Region[] | undefined>;
-  getTalent!: (
+  public getTalent!: (
     id: CUID,
     options?: baseOptions
   ) => Promise<teyvatdev.Talent | undefined>;
-  getTalents!: (
+  public getTalents!: (
     options?: baseOptions
   ) => Promise<teyvatdev.Talent[] | undefined>;
-  getCharacterProfile!: (
+  public getCharacterProfile!: (
     id: CUID,
     options?: baseOptions
   ) => Promise<teyvatdev.CharacterProfile | undefined>;
-  getCharacterProfiles!: (
+  public getCharacterProfiles!: (
     options?: baseOptions
   ) => Promise<teyvatdev.CharacterProfile[] | undefined>;
   //when was last request made
-  _lastRequest!: number;
+  private _lastRequest!: number;
   //current quota left
-  _quota!: number;
+  private _quota!: number;
   //maximum quota
-  _quotaMax!: number;
+  private _quotaMax!: number;
   //the amount to be waited for the quota to reset
-  _gracePeriod!: number;
+  private _gracePeriod!: number;
   //a retry function to delay
-  _retry!: (delay: number) => Promise<void>;
+  private _retry!: (delay: number) => Promise<unknown>;
   //the reset timestamp IN SECONDS of when quota resets
-  _reset!: number;
+  private _reset!: number;
   constructor(token: TeyvatToken) {
     this._token = token;
     this.base = 'https://rest.teyvat.dev/';
@@ -139,7 +139,7 @@ export class Teyvat {
     this._quota = 0;
     this._quotaMax = 100;
     this._gracePeriod = 15 * 60 * 1000;
-    this._reset = Date.now() / 1000;
+    this._reset = Math.ceil(Date.now() / 1000) + 900;
     (async () => {
       let fetchRates = await axios.get(this.base + 'character', {
         headers: {
@@ -158,16 +158,11 @@ export class Teyvat {
           this._reset = fetchRates.headers['x-ratelimit-reset'];
       }
     })();
-    this._retry = (delay: number): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        //let e = Number(this._reset - Math.ceil(Date.now() / 1000));
-        if (Date.now() / 1000 > this._reset) resolve();
-        else
-          setTimeout(() => {
-            resolve();
-          }, delay);
+    this._retry = (delay: number): Promise<unknown> =>
+      new Promise((resolve) => {
+        if (Math.sign(delay) === -1) delay = 900;
+        setTimeout(resolve, Math.ceil(delay) * 1000);
       });
-    };
     this.getCharacter = async function getCharacter(
       name: string,
       /**
@@ -177,7 +172,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Character | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'character', {
@@ -211,7 +208,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Character[] | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'characters', {
@@ -245,7 +244,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Weapon | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'weapon/' + id, {
@@ -278,7 +279,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Weapon[] | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'weapons', {
@@ -312,7 +315,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Region | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'region/' + id, {
@@ -345,7 +350,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Region[] | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'regions', {
@@ -379,7 +386,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Element | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'element/' + id, {
@@ -412,7 +421,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Element[] | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'elements', {
@@ -446,7 +457,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Talent | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'talent/' + id, {
@@ -479,7 +492,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.Talent[] | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'talents', {
@@ -513,7 +528,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.CharacterProfile | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'characterProfile/' + id, {
@@ -546,7 +563,9 @@ export class Teyvat {
       options?: baseOptions
     ): Promise<teyvatdev.CharacterProfile[] | undefined> {
       if (this._quota < 4)
-        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
       let data = undefined;
       try {
         data = await axios.get(this.base + 'characterProfiles', {
