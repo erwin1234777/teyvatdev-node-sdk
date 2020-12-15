@@ -20,9 +20,59 @@ abstract class baseOptions {
 }
 type CUID = string;
 type TeyvatToken = string;
+/**
+ * ## TS Example
+ *
+ * ```
+ * import { Teyvat } from '../TeyvatLib/index';
+ * const tey = new Teyvat('Token Here');
+ *
+ * tey.getCharacter('Amber').then((data) => {
+ * console.log(data);
+ *  //Expected, Amber stats or undefined
+ * })
+ * ```
+ *
+ *  ## JS Example
+ *
+ * ```
+ * const Tey = require('../TeyvatLib/index');
+ * const tey = new Tey('Token Here');
+ *
+ * tey.getCharacter('Amber').then((data) => {
+ * console.log(data);
+ *  //Expected, Amber stats or undefined
+ * })
+ *
+ * ```
+ * ## All examples
+ * ```
+ * let Amber = await tey.getCharacter('Amber');
+ * let Characters = await tey.getCharacters();
+ * let FavoniuSword = await tey.getWeapon('10');
+ * let Weapons = await tey.getWeapons();
+ * let Mondstad = await tey.getRegion('ckifg54kg0000vf0iclar2lp6');
+ * let Regions = await tey.getRegions();
+ * let Anemo = await tey.getElement('ckifg2oxf0000n30i3k0e3s7m');
+ * let Elements = await tey.getElements();
+ * let GoldTalent = await tey.getTalent('1');
+ * let Talents = await tey.getTalents();
+ * let AmberProfile = await tey.getCharacterProfile(
+ * 'ckiffwvsx0000990i1z9retm4'
+ * );
+ * let CharacterProfiles = await tey.getCharacterProfiles();
+ *
+ * ```
+ *
+ * ## All methods support optional arguments
+ *
+ */
 export class Teyvat {
+  //Base URL
   base!: string;
-  _token!: string;
+  //TEYVAT token
+  _token!: TeyvatToken;
+  //all methods below this point
   getCharacter!: (
     name: string,
     options?: baseOptions
@@ -70,11 +120,17 @@ export class Teyvat {
   getCharacterProfiles!: (
     options?: baseOptions
   ) => Promise<teyvatdev.CharacterProfile[] | undefined>;
+  //when was last request made
   _lastRequest!: number;
+  //current quota left
   _quota!: number;
+  //maximum quota
   _quotaMax!: number;
+  //the amount to be waited for the quota to reset
   _gracePeriod!: number;
-  _retry!: () => Promise<void>;
+  //a retry function to delay
+  _retry!: (delay: number) => Promise<void>;
+  //the reset timestamp IN SECONDS of when quota resets
   _reset!: number;
   constructor(token: TeyvatToken) {
     this._token = token;
@@ -83,7 +139,7 @@ export class Teyvat {
     this._quota = 0;
     this._quotaMax = 100;
     this._gracePeriod = 15 * 60 * 1000;
-    this._reset = Date.now();
+    this._reset = Date.now() / 1000;
     (async () => {
       let fetchRates = await axios.get(this.base + 'character', {
         headers: {
@@ -102,13 +158,14 @@ export class Teyvat {
           this._reset = fetchRates.headers['x-ratelimit-reset'];
       }
     })();
-    this._retry = () => {
+    this._retry = (delay: number): Promise<void> => {
       return new Promise((resolve, reject) => {
-        if (Date.now() > this._reset) resolve();
+        //let e = Number(this._reset - Math.ceil(Date.now() / 1000));
+        if (Date.now() / 1000 > this._reset) resolve();
         else
           setTimeout(() => {
             resolve();
-          }, this._reset - Date.now());
+          }, delay);
       });
     };
     this.getCharacter = async function getCharacter(
@@ -119,8 +176,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Character | undefined> {
-      if (this._quota < 4) await this._retry();
-      else this._quota--;
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'character', {
@@ -136,9 +193,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
-      if (data.headers['x-ratelimit-reset'])
-        this._reset = data.headers['x-ratelimit-reset'];
-      console.log(data);
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Character;
     };
     this.getCharacters = async function getCharacters(
@@ -148,6 +210,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Character[] | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'characters', {
@@ -162,6 +226,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Character[];
     };
     this.getWeapon = async function getWeapon(
@@ -172,6 +244,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Weapon | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'weapon/' + id, {
@@ -186,6 +260,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Weapon;
     };
     this.getWeapons = async function getWeapons(
@@ -195,6 +277,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Weapon[] | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'weapons', {
@@ -209,6 +293,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Weapon[];
     };
     this.getRegion = async function getRegion(
@@ -219,6 +311,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Region | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'region/' + id, {
@@ -233,6 +327,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Region;
     };
     this.getRegions = async function getRegions(
@@ -242,6 +344,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Region[] | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'regions', {
@@ -256,6 +360,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Region[];
     };
     this.getElement = async function getElement(
@@ -266,6 +378,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Element | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'element/' + id, {
@@ -280,6 +394,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Element;
     };
     this.getElements = async function getElements(
@@ -289,6 +411,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Element[] | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'elements', {
@@ -303,6 +427,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Element[];
     };
     this.getTalent = async function getTalent(
@@ -313,6 +445,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Talent | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'talent/' + id, {
@@ -327,6 +461,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Talent;
     };
     this.getTalents = async function getTalents(
@@ -336,6 +478,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.Talent[] | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'talents', {
@@ -350,6 +494,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.Talent[];
     };
     this.getCharacterProfile = async function getCharacterProfile(
@@ -360,6 +512,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.CharacterProfile | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'characterProfile/' + id, {
@@ -374,6 +528,14 @@ export class Teyvat {
         console.log(er);
         throw Error(er);
       }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+      }
       return data?.data as undefined | teyvatdev.CharacterProfile;
     };
     this.getCharacterProfiles = async function getCharacterProfiles(
@@ -383,6 +545,8 @@ export class Teyvat {
        */
       options?: baseOptions
     ): Promise<teyvatdev.CharacterProfile[] | undefined> {
+      if (this._quota < 4)
+        await this._retry(this._reset - Math.ceil(Date.now() / 1000));
       let data = undefined;
       try {
         data = await axios.get(this.base + 'characterProfiles', {
@@ -396,6 +560,14 @@ export class Teyvat {
       } catch (er) {
         console.log(er);
         throw Error(er);
+      }
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
       }
       return data?.data as undefined | teyvatdev.CharacterProfile[];
     };
