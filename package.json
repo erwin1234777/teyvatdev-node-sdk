@@ -1,0 +1,35 @@
+{
+  "name": "@teyvatdev/node-sdk",
+  "version": "0.1.0",
+  "description": "A Teyvat API wrapper",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/erwin1234777/teyvatdev-node-sdk.git"
+  },
+  "keywords": [
+    "teyvat",
+    "genshin",
+    "impact",
+    "node",
+    "js",
+    "ts",
+    "typescript",
+    "javascript",
+    "API",
+    "wrapper"
+  ],
+  "author": "Not Erwin#8753",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/erwin1234777/teyvatdev-node-sdk/issues"
+  },
+  "homepage": "https://github.com/erwin1234777/teyvatdev-node-sdk#readme",
+  "dependencies": {
+    "@teyvatdev/types": "^0.4.3",
+    "axios": "^0.21.0"
+  }
+}
