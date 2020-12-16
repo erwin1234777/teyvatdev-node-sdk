@@ -1,6 +1,6 @@
 {
   "name": "@teyvatdev/node-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Teyvat API wrapper",
   "main": "index.js",
   "scripts": {
