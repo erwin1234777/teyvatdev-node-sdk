@@ -33,6 +33,7 @@
   "homepage": "https://github.com/erwin1234777/teyvatdev-node-sdk#readme",
   "dependencies": {
     "@teyvatdev/types": "^0.4.3",
+    "@types/node": "^14.14.14",
     "axios": "^0.21.0",
     "tslib": "^2.0.3"
   }

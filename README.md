@@ -46,19 +46,19 @@ tey.getCharacter('Amber').then((data) => {
 
 #### [] means optional parameter
 
-| Method                   | Params          | Returns             | Working Example(copy paste)                                                           |
-| ------------------------ | --------------- | ------------------- | ------------------------------------------------------------------------------------- |
-| `getCharacter()`         | name, [options] | Object, null        | `let Amber = await tey.getCharacter('Amber');`                                        |
-| `getCharacters()`        | [options]       | Object[array], null | `let Characters = await tey.getCharacters();`                                         |
-| `getWeapon()`            | ID, [options]   | Object, null        | `let FavoniuSword = await tey.getWeapon('10');`                                       |
-| `getWeapons()`           | [options]       | Object[array], null | `let Weapons = await tey.getWeapons();`                                               |
-| `getRegion()`            | CUID, [options] | Object, null        | `let Mondstad = await tey.getRegion('ckifg54kg0000vf0iclar2lp6');`                    |
-| `getRegions()`           | [options]       | Object[array], null | `let Regions = await tey.getRegions();`                                               |
-| `getRegion()`            | CUID, [options] | Object, null        | `let Anemo = await tey.getElement('ckifg2oxf0000n30i3k0e3s7m');`                      |
-| `getRegions()`           | [options]       | Object[array], null | `let Elements = await tey.getElements();`                                             |
-| `getTalent()`            | CUID, [options] | Object, null        | `let Divine_Marksmanship = await tey.getTalent('ckiqng1u300210ns6clktnh3c');`         |
-| `getTalents()`           | [options]       | Object[array], null | `let Talents = await tey.getTalents();;`                                              |
-| `getCharacterProfile()`  | CUID, [options] | Object, null        | `let AmberProfile = await tey.getCharacterProfile('ckiffwvsx0000990i1z9retm4');`      |
-| `getCharacterProfiles()` | [options]       | Object[array], null | `let CharacterProfiles = await tey.getCharacterProfiles();`                           |
-| `flushCache()`           | [options]       |                     | `tey.flushCache()`                                                                    |
-| `cacheAll()`             |                 | boolean             | `tey.cacheAll()` Returns true if everything has been cache, false if something failed |
+| Method                   | Params          | Returns             | Working Example(copy paste)                                                            |
+| ------------------------ | --------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| `getCharacter()`         | name, [options] | Object, null        | `let Amber = await tey.getCharacter('Amber');`                                         |
+| `getCharacters()`        | [options]       | Object[array], null | `let Characters = await tey.getCharacters();`                                          |
+| `getWeapon()`            | ID, [options]   | Object, null        | `let FavoniuSword = await tey.getWeapon('10');`                                        |
+| `getWeapons()`           | [options]       | Object[array], null | `let Weapons = await tey.getWeapons();`                                                |
+| `getRegion()`            | CUID, [options] | Object, null        | `let Mondstad = await tey.getRegion('ckifg54kg0000vf0iclar2lp6');`                     |
+| `getRegions()`           | [options]       | Object[array], null | `let Regions = await tey.getRegions();`                                                |
+| `getRegion()`            | CUID, [options] | Object, null        | `let Anemo = await tey.getElement('ckifg2oxf0000n30i3k0e3s7m');`                       |
+| `getRegions()`           | [options]       | Object[array], null | `let Elements = await tey.getElements();`                                              |
+| `getTalent()`            | CUID, [options] | Object, null        | `let Divine_Marksmanship = await tey.getTalent('ckiqng1u300210ns6clktnh3c');`          |
+| `getTalents()`           | [options]       | Object[array], null | `let Talents = await tey.getTalents();;`                                               |
+| `getCharacterProfile()`  | CUID, [options] | Object, null        | `let AmberProfile = await tey.getCharacterProfile('ckiffwvsx0000990i1z9retm4');`       |
+| `getCharacterProfiles()` | [options]       | Object[array], null | `let CharacterProfiles = await tey.getCharacterProfiles();`                            |
+| `flushCache()`           | [options]       |                     | `tey.flushCache()`                                                                     |
+| `cacheAll()`             |                 | boolean             | `tey.cacheAll()` Returns true if everything has been cached, false if something failed |
