@@ -17,6 +17,13 @@ abstract class baseOptions {
    * which will include the connected talents table of the chars returned
    */
   include?: any;
+  /**
+   * Used internally for aggressive caching
+   */
+  cache?: boolean;
+}
+interface TeyvatConstructorOptions {
+  aggressive?: boolean;
 }
 type CUID = string;
 type TeyvatToken = string;
@@ -146,6 +153,8 @@ export class Teyvat {
   public getCharacterProfiles!: (
     options?: baseOptions
   ) => Promise<teyvatdev.CharacterProfile[] | undefined>;
+  public flushCache!: (options?: string) => void;
+  public cacheAll!: () => Promise<boolean>;
   //when was last request made
   private _lastRequest!: number;
   //current quota left
@@ -158,7 +167,7 @@ export class Teyvat {
   private _retry!: (delay: number) => Promise<unknown>;
   //the reset timestamp IN SECONDS of when quota resets
   private _reset!: number;
-  constructor(token: TeyvatToken) {
+  constructor(token: TeyvatToken, options?: TeyvatConstructorOptions) {
     this._token = token;
     this.base = 'https://rest.teyvat.dev/';
     this._lastRequest = Date.now();
@@ -172,7 +181,37 @@ export class Teyvat {
     this._elementsCache = new Map();
     this._talentsCache = new Map();
     this._charactersProfilesCache = new Map();
-
+    this.flushCache = function flushCache(options?: string): void {
+      if (!options) {
+        this._charactersCache = new Map();
+        this._weaponsCache = new Map();
+        this._regionsCache = new Map();
+        this._elementsCache = new Map();
+        this._talentsCache = new Map();
+        this._charactersProfilesCache = new Map();
+      } else {
+        switch (options) {
+          //TODO ADD specific cache flushing here
+          case '': {
+            break;
+          }
+        }
+      }
+    };
+    this.cacheAll = async function cacheAll(): Promise<boolean> {
+      return new Promise(async (res) => {
+        if (this._quota < 6) res(false);
+        else {
+          await this.getCharacters({ take: 300, cache: true });
+          await this.getWeapons({ take: 300, cache: true });
+          await this.getRegions({ take: 300, cache: true });
+          await this.getElements({ take: 300, cache: true });
+          //  await this.getTalents({ take: 300, cache:true });
+          await this.getCharacterProfiles({ take: 300, cache: true });
+          res(true);
+        }
+      });
+    };
     (async () => {
       let fetchRates = await axios.get(this.base + 'character', {
         headers: {
@@ -235,7 +274,8 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //if data has been returned(aka not null) and there are no custom options, set cache
-        if (data.data && !options) this._charactersCache.set(name, data.data);
+        if ((!options && data.data) || options?.cache)
+          this._charactersCache.set(name, data.data);
       }
       return data?.data as undefined | teyvatdev.Character;
     };
@@ -276,12 +316,12 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //setting cache on normal request
-        if (!options && data.data) {
+        if ((!options && data.data) || options?.cache) {
           this._charactersCache.set(
             null,
             (data.data as unknown) as teyvatdev.Character[]
           );
-          for (let d of data.data) this._charactersCache.set(d.id, d);
+          for (let d of data.data) this._charactersCache.set(d.name, d);
         }
       }
       return data?.data as undefined | teyvatdev.Character[];
@@ -324,7 +364,8 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //if data has been returned(aka not null) and there are no custom options, set cache
-        if (data.data && !options) this._weaponsCache.set(id, data.data);
+        if ((!options && data.data) || options?.cache)
+          this._weaponsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Weapon;
     };
@@ -365,7 +406,7 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //setting cache on normal request
-        if (!options && data.data) {
+        if ((!options && data.data) || options?.cache) {
           this._weaponsCache.set(
             null,
             (data.data as unknown) as teyvatdev.Weapon[]
@@ -413,7 +454,8 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //if data has been returned(aka not null) and there are no custom options, set cache
-        if (data.data && !options) this._regionsCache.set(id, data.data);
+        if ((!options && data.data) || options?.cache)
+          this._regionsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Region;
     };
@@ -454,7 +496,7 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //setting cache on normal request
-        if (!options && data.data) {
+        if ((!options && data.data) || options?.cache) {
           this._regionsCache.set(
             null,
             (data.data as unknown) as teyvatdev.Region[]
@@ -502,7 +544,8 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //if data has been returned(aka not null) and there are no custom options, set cache
-        if (data.data && !options) this._elementsCache.set(id, data.data);
+        if ((!options && data.data) || options?.cache)
+          this._elementsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Element;
     };
@@ -543,7 +586,7 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //setting cache on normal request
-        if (!options && data.data) {
+        if ((!options && data.data) || options?.cache) {
           this._elementsCache.set(
             null,
             (data.data as unknown) as teyvatdev.Element[]
@@ -591,7 +634,8 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //if data has been returned(aka not null) and there are no custom options, set cache
-        if (data.data && !options) this._talentsCache.set(id, data.data);
+        if ((!options && data.data) || options?.cache)
+          this._talentsCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.Talent;
     };
@@ -632,7 +676,7 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //setting cache on normal request
-        if (!options && data.data) {
+        if ((!options && data.data) || options?.cache) {
           this._talentsCache.set(
             null,
             (data.data as unknown) as teyvatdev.Talent[]
@@ -682,7 +726,7 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //if data has been returned(aka not null) and there are no custom options, set cache
-        if (data.data && !options)
+        if ((!options && data.data) || options?.cache)
           this._charactersProfilesCache.set(id, data.data);
       }
       return data?.data as undefined | teyvatdev.CharacterProfile;
@@ -726,7 +770,7 @@ export class Teyvat {
         if (data.headers['x-ratelimit-reset'] !== undefined)
           this._reset = data.headers['x-ratelimit-reset'];
         //setting cache on normal request
-        if (!options && data.data) {
+        if ((!options && data.data) || options?.cache) {
           this._charactersProfilesCache.set(
             null,
             (data.data as unknown) as teyvatdev.CharacterProfile[]
@@ -736,5 +780,16 @@ export class Teyvat {
       }
       return data?.data as undefined | teyvatdev.CharacterProfile[];
     };
+    if (options?.aggressive) {
+      setTimeout(() => {
+        this.cacheAll().then((d) =>
+          console.log(
+            d
+              ? '[TeyvatLib]: Cached all entries'
+              : '[TeyvatLib]: Failed to cache all entries'
+          )
+        );
+      }, 30000);
+    }
   }
 }
