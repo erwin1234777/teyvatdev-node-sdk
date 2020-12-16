@@ -6,6 +6,9 @@
   "scripts": {
     "test": "mocha"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/erwin1234777/teyvatdev-node-sdk.git"
