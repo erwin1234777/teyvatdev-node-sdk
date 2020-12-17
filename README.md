@@ -10,6 +10,21 @@ Official links: [[Npm]](https://www.npmjs.com/package/@teyvatdev/node-sdk) [[Git
 $ npm i @teyvatdev/node-sdk
 ```
 
+#### In Node-js (JavaScript)
+
+```js
+const Tey = require('@teyvatdev/node-sdk');
+
+//Constructor
+const tey = new Tey.Teyvat('Token Here');
+
+//method getCharacter(), gets a character by name
+tey.getCharacter('Amber').then((data) => {
+  console.log(data);
+  //Expected, Amber stats
+});
+```
+
 #### In Node-js (TypeScript)
 
 ```js
