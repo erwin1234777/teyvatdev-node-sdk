@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Teyvat = void 0;
 const tslib_1 = require("tslib");
 const axios_1 = tslib_1.__importDefault(require("axios"));
+const async = tslib_1.__importStar(require("async"));
+//TODO IMPORTANT check axios response if it contains errors (200 OK)
 class baseOptions {
 }
 /**
@@ -61,12 +63,16 @@ class Teyvat {
         this._quotaMax = 100;
         this._gracePeriod = 15 * 60 * 1000;
         this._reset = Math.ceil(Date.now() / 1000) + 900;
+        this._hasRates = false;
         this._charactersCache = new Map();
         this._weaponsCache = new Map();
         this._regionsCache = new Map();
         this._elementsCache = new Map();
         this._talentsCache = new Map();
         this._charactersProfilesCache = new Map();
+        this._queue = async.queue(async (fn) => {
+            return await fn();
+        }, 1);
         this.flushCache = function flushCache(options) {
             if (!options) {
                 this._charactersCache = new Map();
@@ -94,13 +100,14 @@ class Teyvat {
                     await this.getWeapons({ take: 300, cache: true });
                     await this.getRegions({ take: 300, cache: true });
                     await this.getElements({ take: 300, cache: true });
-                    //  await this.getTalents({ take: 300, cache:true });
+                    await this.getTalents({ take: 300, cache: true });
                     await this.getCharacterProfiles({ take: 300, cache: true });
                     res(true);
                 }
             });
         };
-        (async () => {
+        this._ready = (async () => {
+            //dummy request
             let fetchRates = await axios_1.default.get(this.base + 'character', {
                 headers: {
                     Authorization: 'Bearer ' + this._token,
@@ -125,7 +132,7 @@ class Teyvat {
         });
         this.getCharacter = async function getCharacter(name, 
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -133,18 +140,20 @@ class Teyvat {
             if (this._charactersCache.has(name) && !options)
                 return this._charactersCache.get(name);
             //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4)
+            if (this._quota < 4 && this._hasRates)
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'character', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        name: name,
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'character', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            name: name,
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -152,6 +161,7 @@ class Teyvat {
                 throw Error(er);
             }
             if (data) {
+                this._hasRates = true;
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
                 if (data.headers['x-ratelimit-limit'] !== undefined)
@@ -166,7 +176,7 @@ class Teyvat {
         };
         this.getCharacters = async function getCharacters(
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -178,13 +188,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'characters', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'characters', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -209,7 +221,7 @@ class Teyvat {
         };
         this.getWeapon = async function getWeapon(id, 
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -221,13 +233,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'weapon/' + id, {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'weapon/' + id, {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -249,7 +263,7 @@ class Teyvat {
         };
         this.getWeapons = async function getWeapons(
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -261,13 +275,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'weapons', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'weapons', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -292,7 +308,7 @@ class Teyvat {
         };
         this.getRegion = async function getRegion(id, 
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -304,13 +320,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'region/' + id, {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'region/' + id, {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -332,7 +350,7 @@ class Teyvat {
         };
         this.getRegions = async function getRegions(
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -344,13 +362,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'regions', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'regions', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -375,7 +395,7 @@ class Teyvat {
         };
         this.getElement = async function getElement(id, 
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -387,13 +407,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'element/' + id, {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'element/' + id, {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -415,7 +437,7 @@ class Teyvat {
         };
         this.getElements = async function getElements(
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -427,13 +449,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'elements', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'elements', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -458,7 +482,7 @@ class Teyvat {
         };
         this.getTalent = async function getTalent(id, 
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -470,13 +494,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'talent/' + id, {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'talent/' + id, {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -498,7 +524,7 @@ class Teyvat {
         };
         this.getTalents = async function getTalents(
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -510,13 +536,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'talents', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'talents', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -541,7 +569,7 @@ class Teyvat {
         };
         this.getCharacterProfile = async function getCharacterProfile(id, 
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -553,13 +581,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'characterProfile/' + id, {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'characterProfile/' + id, {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
@@ -581,7 +611,7 @@ class Teyvat {
         };
         this.getCharacterProfiles = async function getCharacterProfiles(
         /**
-         * Options: //TODO check options here
+         * Options:
          *
          */
         options) {
@@ -593,13 +623,15 @@ class Teyvat {
                 await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
             let data = undefined;
             try {
-                data = await axios_1.default.get(this.base + 'characterProfiles', {
-                    headers: {
-                        Authorization: 'Bearer ' + this._token,
-                    },
-                    params: {
-                        ...options,
-                    },
+                data = await this._queue.push(async () => {
+                    return await axios_1.default.get(this.base + 'characterProfiles', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
                 });
             }
             catch (er) {
