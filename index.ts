@@ -131,7 +131,6 @@ export default class Teyvat {
     string | null,
     teyvatdev.CharacterProfile | teyvatdev.CharacterProfile[]
   >;
-  public getToken!: (email: string, password: string) => Promise<TeyvatToken>;
   public getCharacter!: (
     name: string,
     options?: baseOptions
@@ -178,6 +177,8 @@ export default class Teyvat {
   public cacheAll!: () => Promise<boolean>;
   //Checks for errors, returns true on an error'ed request, returns false on a normalised 200 request
   private _errorHandler!: (data: AxiosResponse) => boolean;
+  //a retry function to delay
+  private _retry!: (delay: number) => Promise<unknown>;
   //when was last request made
   private _lastRequest!: number;
   //current quota left
@@ -186,8 +187,7 @@ export default class Teyvat {
   private _quotaMax!: number;
   //the amount to be waited for the quota to reset
   private _gracePeriod!: number;
-  //a retry function to delay
-  private _retry!: (delay: number) => Promise<unknown>;
+
   //the reset timestamp IN SECONDS of when quota resets
   private _reset!: number;
   private _silent!: boolean;

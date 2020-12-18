@@ -104,4 +104,4 @@ Currently, ask [HERE](https://discord.gg/Pb8aQqx7kr)
  The lib is shielded with 200 http request status checks, the cache and the returns will only be used when the API sends an OK status.
  The lib has an internal error checker to pass the request and throw the appropriate errors. (Due to the nature of objects, it is recommended to use Visual Studio Code with a .vscode config without ``--outputCapture`` flag, otherwise objects might cause spam in console as they contain the error message and a trace for debugging )
 
-Some other note worthy mentions is a ready state that waits the library to request data to the api on its construction, a rate limiter, a queue system to prevent spam, another exported class constructor to help fetching the api token, a cache flush and a retry method.
+Some other note worthy mentions is a ready state that waits the library to request data to the api on its construction, a rate limiter, a queue system to prevent spam, a cache flush and a retry method.

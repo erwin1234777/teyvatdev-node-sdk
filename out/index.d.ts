@@ -102,7 +102,6 @@ export default class Teyvat {
     private _elementsCache;
     private _talentsCache;
     private _charactersProfilesCache;
-    getToken: (email: string, password: string) => Promise<TeyvatToken>;
     getCharacter: (name: string, options?: baseOptions) => Promise<teyvatdev.Character | undefined>;
     getCharacters: (options?: baseOptions) => Promise<teyvatdev.Character[] | undefined>;
     getWeapon: (name: string, options?: baseOptions) => Promise<teyvatdev.Weapon | undefined>;
@@ -118,11 +117,11 @@ export default class Teyvat {
     flushCache: (options?: flushOptions) => void;
     cacheAll: () => Promise<boolean>;
     private _errorHandler;
+    private _retry;
     private _lastRequest;
     private _quota;
     private _quotaMax;
     private _gracePeriod;
-    private _retry;
     private _reset;
     private _silent;
     private _ready;
