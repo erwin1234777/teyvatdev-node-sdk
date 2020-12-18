@@ -18,16 +18,16 @@ npm i @teyvatdev/node-sdk
 
 ## ``Index``
 
-- [Token](##-How-to-get-your-token)
-- [Implementation Js](###-In-Node-js-(JavaScript))
-- [Implementation Ts](###-In-Node-js-(TypeScript))
-- [Manual Token Ts](##-``Node-js(JypeScript)``)
-- [Manual Token Js](##-``Node-js(TypeScript)``)
-- [Automated Token Fetch Ts](##-``TypeScript-Automatic-Script``)
-- [Automated Token Fetch Js](##-``JavaScript-Automatic-Script``)
-- [Constructor](##-Constructor-parameters)
-- [Methods](##-Methods)
-- [Internals](##-``Internals``)
+- [Token](#how-to-get-your-token)
+- [Implementation Js](#in-node-js-javascript)
+- [Implementation Ts](#in-node-js-typescript)
+- [Manual Token Ts](#node-jstypescript)
+- [Manual Token Js](#node-jsjavascript)
+- [Automated Token Fetch Ts](#typescript-automatic-script)
+- [Automated Token Fetch Js](#javascript-automatic-script)
+- [Constructor](#constructor-parameters)
+- [Methods](#methods)
+- [Internals](#internals)
 
 ### In Node-js (JavaScript)
 
