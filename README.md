@@ -14,17 +14,13 @@ npm i @teyvatdev/node-sdk
 
 ### Why Teyvat-API?
 
- This is an actual API wrapper, unlike most npm packages that stores json databases containing character data, this fetches and caches it locally from the API real time, so if the values change, you would normally require the author of the package to manually update their database, which forces users to need to update their package. This leads to apps needed to be shutdown for upgrades and updates. Unlike those, we fetch this data dynamically and check periodically for changes in the API itself, so the only updates you'll need to do on this package are major API changes, not related to the data, which is handled internally. This library also provides a method to register and fetch your token internally, without the need of Postman or other https requests.
+ This is an actual API wrapper, unlike most npm packages that stores json databases containing character data, this fetches and caches it locally from the API real time, so if the values change, you would normally require the author of the package to manually update their database, which forces users to need to update their package. This leads to apps needed to be shutdown for upgrades and updates. Unlike those, we fetch this data dynamically and check periodically for changes in the API itself, so the only updates you'll need to do on this package are major API changes, not related to the data, which is handled internally.
 
 ## ``Index``
 
 - [Token](#how-to-get-your-token)
 - [Implementation Js](#in-node-js-javascript)
 - [Implementation Ts](#in-node-js-typescript)
-- [Manual Token Ts](#node-jstypescript)
-- [Manual Token Js](#node-jsjavascript)
-- [Automated Token Fetch Ts](#typescript-automatic-script)
-- [Automated Token Fetch Js](#javascript-automatic-script)
 - [Constructor](#constructor-parameters)
 - [Methods](#methods)
 - [Internals](#internals)
@@ -99,98 +95,9 @@ tey.getCharacter('Amber').then((data) => {
 | `flushCache()`           | [options]       |                     | `tey.flushCache()`                                                                     |
 | `cacheAll()`             |                 | boolean             | `tey.cacheAll()` Returns true if everything has been cached, false if something failed |
 
-## ``Register Class``
-
-| Method                   | Params          | Returns             | Working Example(copy paste)                                                            |
-| ------------------------ | --------------- | ------------------- | -------------------------------------------------------------------------------------- |
-| `registerUser()`         | email?, password? | string,null        | `register.registerUser();`  You do NOT need to pass in the email and password if you already put it in the constructor                                     |
-| `getToken()`         | email?, password? | Token,null        | `register.getToken();`  You do NOT need to pass in the email and password if you already put it in the constructor. Returns a Teyvat Token                                     |
-
 ## How to get your token
 
- Make sure to verify your email before continuing, otherwise you will get an error. Do registerUser() first, verify email, then do getToken();
- It is recommended to keep your token safe and secure. Tips: Do not hardcode your token, add it to an .ENV file or a config.json;
-
-## ``Node-js(TypeScript)``
-
- ```ts
- import { Register } from 'teyvatdev-node-sdk'
-
- const register = new Register('YourEmailHere','YourPasswordHere');
- register.registerUser();
-
- //Go to your email and activate it before continuining!!!!
- register.getToken().then((token) => console.log(token));
- ```
-
-## ``Node-js(JavaScript)``
-
- ```js
- const Register = require('teyvatdev-node-sdk').Register;
-
- const register = new Register('YourEmailHere','YourPasswordHere');
- register.registerUser();
-
- //Go to your email and activate it before continuining!!!!
- register.getToken().then((token) => console.log(token));
- ```
-
- After you've acquired your token, you may use it on the Teyvat constructor, which is the one used for the API wrapper
-
- Thats it, you finished!
-
- If you wish an automated script to run it and get your token, i've made this so you can paste it on your script to run it, it will wait 5 minutes until your email gets verified, then run the rest of the code
-
-## DO NOT SHARE YOUR TOKEN, THESE SCRIPTS WILL SHOW YOUR TOKEN IN YOUR TERMINAL
-
-## ``TypeScript Automatic Script``
-
-TOKEN IN CONSOLE
-
-Run with ``ts-node <filename>.ts``
-
-Run [ ``npm i ts-node`` ] if ts-node is not installed already
-
- ```ts
- import { Register } from 'teyvatdev-node-sdk';
-
- const register = new Register('YourEmailHere','YourPasswordHere');
- register.registerUser().then(user: string | null => {
-  if(!user) return console.log('There was an error registering, please retry');
-  console.log('Please go verify at the email provided! The script will continue in 5 minutes, verify it before then!')
-  setTimeout(() => {
-  //This is delay for you to go verify your email, you got 5 minutes
-  register.getToken().then(token: string | null => {
-   if(token) console.log(token);
-   else console.log('An error occurred, token returned null');
-   });
- },300000)
- })
-
- ```
-
-## ``JavaScript Automatic Script``
-
-TOKEN IN CONSOLE
-
-Run with ``node <filename>.js``
-
- ```js
- const Register = require('teyvatdev-node-sdk').Register;
- const register = new Register('YourEmailHere','YourPasswordHere');
- register.registerUser().then(user => {
-  if(!user) return console.log('There was an error registering, please retry');
-  console.log('Please go verify at the email provided! The script will continue in 5 minutes, verify it before then!')
-  setTimeout(() => {
-  //This is delay for you to go verify your email, you got 5 minutes
-  register.getToken().then(token => {
-   if(token) console.log(token);
-   else console.log('An error occurred, token returned null');
-   });
- },300000)
- })
-
- ```
+Currently, ask [HERE](https://discord.gg/Pb8aQqx7kr)
 
 ## ``Internals``
 
