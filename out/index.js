@@ -1,12 +1,117 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Teyvat = void 0;
+exports.Register = void 0;
 const tslib_1 = require("tslib");
 const axios_1 = tslib_1.__importDefault(require("axios"));
 const async = tslib_1.__importStar(require("async"));
-//TODO IMPORTANT check axios response if it contains errors (200 OK)
 class baseOptions {
 }
+/**
+ * ## How to get your token
+ *
+ * Make sure to verify your email before continuing, otherwise you will get an error. Do registerUser() first, verify email, then do getToken();
+ * It is recommended to keep your token safe and secure. Tips: Do not hardcode your token, add it to an .ENV file or a config.json;
+ *
+ *
+ * ## Node-js(TypeScript)
+ * ```
+ * import { Register } from 'teyvatdev-node-sdk'
+ *
+ * const register = new Register('YourEmailHere','YourPasswordHere');
+ * register.registerUser();
+ *
+ * //Go to your email and activate it before continuining!!!!
+ * register.getToken().then((token) => console.log(token));
+ * ```
+ *
+ * ## Node-js(JavaScript)
+ * ```
+ * const Register = require('teyvatdev-node-sdk').Register;
+ *
+ * const register = new Register('YourEmailHere','YourPasswordHere');
+ * register.registerUser();
+ *
+ * //Go to your email and activate it before continuining!!!!
+ * register.getToken().then((token) => console.log(token));
+ * ```
+ *
+ * After you've acquired your token, you may use it on the Teyvat constructor, which is the one used for the API wrapper
+ *
+ * Thats it, you finished!
+ *
+ *
+ * If you wish an automated script to run it and get your token, i've made this so you can paste it on your script to run it, it will wait 5 minutes until your email gets verified, then run the rest of the code
+ *
+ * ## DO NOT SHARE YOUR TOKEN, THESE SCRIPTS WILL LOG YOUR TOKEN IN YOUR TERMINAL!
+ *
+ * ## TypeScript Automatic Script (TOKEN IN CONSOLE)
+ * ```
+ * import { Register } from 'teyvatdev-node-sdk';
+ *
+ * const register = new Register('YourEmailHere','YourPasswordHere');
+ * register.registerUser().then(user:string|null => {
+ *  if(!user) return console.log('There was an error registering, please retry');
+ *  console.log('Please go verify at the email provided! The script will continue in 5 minutes, verify it before then!')
+ *  setTimeout(() => {
+ *  //This is delay for you to go verify your email, you got 5 minutes
+ *  register.getToken().then(token:string|null => {
+ *   if(token) console.log(token);
+ *   else console.log('An error occurred, token returned null');
+ *   });
+ * },300000)
+ * })
+ *
+ * ```
+ * ## JavaScript Automatic Script (TOKEN IN CONSOLE)
+ * ```
+ * const Register = require('teyvatdev-node-sdk').Register;
+ * const register = new Register('YourEmailHere','YourPasswordHere');
+ * register.registerUser().then(user => {
+ *  if(!user) return console.log('There was an error registering, please retry');
+ *  console.log('Please go verify at the email provided! The script will continue in 5 minutes, verify it before then!')
+ *  setTimeout(() => {
+ *  //This is delay for you to go verify your email, you got 5 minutes
+ *  register.getToken().then(token => {
+ *   if(token) console.log(token);
+ *   else console.log('An error occurred, token returned null');
+ *   });
+ * },300000)
+ * })
+ *
+ * ```
+ */
+class Register {
+    constructor(email, password) {
+        this.base = 'https://rest.teyvat.dev/';
+        this._email = email;
+        this._password = password;
+        this.registerUser = async function registerUser(email, password) {
+            let req = await axios_1.default
+                .post(this.base + 'signup', {
+                email: email ? email : this._email,
+                password: password ? password : this._password,
+            })
+                .catch((err) => console.log(err.response));
+            if (!req || req.data.status !== 200)
+                return null;
+            else
+                return 'Success, please verify the email and do getToken() with same params!';
+        };
+        this.getToken = async function getToken(email, password) {
+            let req = await axios_1.default
+                .post(this.base + 'login', {
+                email: email ? email : this._email,
+                password: password ? password : this._password,
+            })
+                .catch((err) => console.log(err.response));
+            if (!req || req.status !== 200)
+                return null;
+            else
+                return req.data.token;
+        };
+    }
+}
+exports.Register = Register;
 /**
  * ## TS Example
  *
@@ -58,6 +163,8 @@ class Teyvat {
     constructor(token, options) {
         this._token = token;
         this.base = 'https://rest.teyvat.dev/';
+        this._cache = options?.cache !== undefined ? options.cache : true;
+        this._silent = options?.silent !== undefined ? options.silent : true;
         this._lastRequest = Date.now();
         this._quota = 0;
         this._quotaMax = 100;
@@ -74,7 +181,7 @@ class Teyvat {
             return await fn();
         }, 1);
         this.flushCache = function flushCache(options) {
-            if (!options) {
+            if (!options || options === 'all') {
                 this._charactersCache = new Map();
                 this._weaponsCache = new Map();
                 this._regionsCache = new Map();
@@ -83,10 +190,28 @@ class Teyvat {
                 this._charactersProfilesCache = new Map();
             }
             else {
-                switch (options) {
-                    //TODO ADD specific cache flushing here
-                    case '': {
-                        break;
+                for (let e of options) {
+                    switch (e) {
+                        case 'characters': {
+                            this._charactersCache = new Map();
+                            break;
+                        }
+                        case 'weapons': {
+                            this._weaponsCache = new Map();
+                            break;
+                        }
+                        case 'regions': {
+                            this._regionsCache = new Map();
+                            break;
+                        }
+                        case 'elements': {
+                            this._elementsCache = new Map();
+                            break;
+                        }
+                        case 'charactersProfiles': {
+                            this._charactersProfilesCache = new Map();
+                            break;
+                        }
                     }
                 }
             }
@@ -130,6 +255,14 @@ class Teyvat {
                 delay = 900;
             setTimeout(resolve, Math.ceil(delay) * 1000);
         });
+        this._errorHandler = function errorHandler(data) {
+            if (this._silent)
+                return false; //this is as good as swallowing errors, though the user set the lib in silent mode, need to add WARN/INFO/ERROR levels
+            if (data.status === 200)
+                return false;
+            console.log({ error: data.data.response });
+            return true;
+        };
         this.getCharacter = async function getCharacter(name, 
         /**
          * Options:
@@ -157,10 +290,11 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
-            if (data) {
+            if (!this._errorHandler(data))
+                return;
+            if (data && data.data.status === 200) {
                 this._hasRates = true;
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -169,7 +303,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //if data has been returned(aka not null) and there are no custom options, set cache
-                if ((!options && data.data) || options?.cache)
+                if (this._cache && ((!options && data.data) || options?.cache))
                     this._charactersCache.set(name, data.data);
             }
             return data?.data;
@@ -200,9 +334,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -211,7 +346,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //setting cache on normal request
-                if ((!options && data.data) || options?.cache) {
+                if (this._cache && ((!options && data.data) || options?.cache)) {
                     this._charactersCache.set(null, data.data);
                     for (let d of data.data)
                         this._charactersCache.set(d.name, d);
@@ -245,9 +380,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -256,7 +392,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //if data has been returned(aka not null) and there are no custom options, set cache
-                if ((!options && data.data) || options?.cache)
+                if (this._cache && ((!options && data.data) || options?.cache))
                     this._weaponsCache.set(id, data.data);
             }
             return data?.data;
@@ -287,9 +423,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -298,7 +435,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //setting cache on normal request
-                if ((!options && data.data) || options?.cache) {
+                if (this._cache && ((!options && data.data) || options?.cache)) {
                     this._weaponsCache.set(null, data.data);
                     for (let d of data.data)
                         this._weaponsCache.set(d.id, d);
@@ -332,9 +469,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -343,7 +481,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //if data has been returned(aka not null) and there are no custom options, set cache
-                if ((!options && data.data) || options?.cache)
+                if (this._cache && ((!options && data.data) || options?.cache))
                     this._regionsCache.set(id, data.data);
             }
             return data?.data;
@@ -374,9 +512,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -385,7 +524,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //setting cache on normal request
-                if ((!options && data.data) || options?.cache) {
+                if (this._cache && ((!options && data.data) || options?.cache)) {
                     this._regionsCache.set(null, data.data);
                     for (let d of data.data)
                         this._regionsCache.set(d.id, d);
@@ -419,9 +558,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -430,7 +570,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //if data has been returned(aka not null) and there are no custom options, set cache
-                if ((!options && data.data) || options?.cache)
+                if (this._cache && ((!options && data.data) || options?.cache))
                     this._elementsCache.set(id, data.data);
             }
             return data?.data;
@@ -461,9 +601,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -472,7 +613,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //setting cache on normal request
-                if ((!options && data.data) || options?.cache) {
+                if (this._cache && ((!options && data.data) || options?.cache)) {
                     this._elementsCache.set(null, data.data);
                     for (let d of data.data)
                         this._elementsCache.set(d.id, d);
@@ -506,9 +647,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -517,7 +659,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //if data has been returned(aka not null) and there are no custom options, set cache
-                if ((!options && data.data) || options?.cache)
+                if (this._cache && ((!options && data.data) || options?.cache))
                     this._talentsCache.set(id, data.data);
             }
             return data?.data;
@@ -548,9 +690,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -559,7 +702,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //setting cache on normal request
-                if ((!options && data.data) || options?.cache) {
+                if (this._cache && ((!options && data.data) || options?.cache)) {
                     this._talentsCache.set(null, data.data);
                     for (let d of data.data)
                         this._talentsCache.set(d.id, d);
@@ -593,9 +736,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -604,7 +748,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //if data has been returned(aka not null) and there are no custom options, set cache
-                if ((!options && data.data) || options?.cache)
+                if (this._cache && ((!options && data.data) || options?.cache))
                     this._charactersProfilesCache.set(id, data.data);
             }
             return data?.data;
@@ -635,9 +779,10 @@ class Teyvat {
                 });
             }
             catch (er) {
-                console.log(er);
-                throw Error(er);
+                this._errorHandler(er);
             }
+            if (!this._errorHandler(data))
+                return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
                     this._quota = data.headers['x-ratelimit-remaining'];
@@ -646,7 +791,7 @@ class Teyvat {
                 if (data.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = data.headers['x-ratelimit-reset'];
                 //setting cache on normal request
-                if ((!options && data.data) || options?.cache) {
+                if (this._cache && ((!options && data.data) || options?.cache)) {
                     this._charactersProfilesCache.set(null, data.data);
                     for (let d of data.data)
                         this._charactersProfilesCache.set(d.id, d);
@@ -663,4 +808,4 @@ class Teyvat {
         }
     }
 }
-exports.Teyvat = Teyvat;
+exports.default = Teyvat;
