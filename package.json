@@ -2,7 +2,7 @@
   "name": "@teyvatdev/node-sdk",
   "version": "1.0.4",
   "description": "A Teyvat API wrapper",
-  "main": "index.js",
+  "main": "./build/src/index.js",
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
@@ -19,7 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/erwin1234777/teyvatdev-node-sdk.git"
   },
-  "typings": "./out/index.d.ts",
+  "typings": "./build/src/index.d.ts",
   "keywords": [
     "teyvat",
     "genshin",
@@ -48,6 +48,7 @@
     "@types/async": "^3.2.5",
     "@types/node": "^14.11.2",
     "gts": "^3.0.3",
+    "ts-node": "^9.1.1",
     "typescript": "^4.0.3"
   }
 }

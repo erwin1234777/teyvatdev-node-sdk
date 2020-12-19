@@ -1,10 +1,10 @@
+import type { AxiosResponse } from 'axios';
 import type { CharacterProfile } from '@teyvatdev/types';
-import type { BaseOptions, CUID } from '../types';
-import type { Teyvat } from '..';
 
+import type Teyvat from '..';
+import type { BaseOptions, CUID } from '../types';
 import setRates from '../methods/setRates';
 import get from '../methods/get';
-import { AxiosResponse } from 'axios';
 
 async function getCharacterProfile(
   this: Teyvat,
@@ -24,7 +24,7 @@ async function getCharacterProfile(
   if (this._quota < 4 && this._hasRates)
     await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
 
-  const res: AxiosResponse<CharacterProfile> = await get.bind(this)(
+  const res: AxiosResponse<CharacterProfile> | undefined = await get.bind(this)(
     'characterProfile',
     {
       id,
@@ -35,7 +35,7 @@ async function getCharacterProfile(
     setRates.bind(this);
 
     //if data has been returned (aka not null) and there are no custom options, set cache
-    if ((!options && res.data) || options?.cache)
+    if (this._cache && ((!options && res.data) || options?.cache))
       this._charactersProfilesCache.set(id, res.data);
 
     return res.data;
@@ -61,15 +61,15 @@ async function getCharacterProfiles(
   if (this._quota < 4)
     await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
 
-  const res: AxiosResponse<CharacterProfile[]> = await get.bind(this)(
-    'characterProfiles'
-  );
+  const res: AxiosResponse<CharacterProfile[]> | undefined = await get.bind(
+    this
+  )('characterProfiles');
 
   if (res) {
     setRates.bind(this);
 
     //setting cache on normal request
-    if ((!options && res.data) || options?.cache) {
+    if (this._cache && ((!options && res.data) || options?.cache)) {
       this._charactersProfilesCache.set(null, res.data as CharacterProfile[]);
       for (const char of res.data)
         this._charactersProfilesCache.set(char.id, char);

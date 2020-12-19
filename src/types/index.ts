@@ -22,10 +22,36 @@ export abstract class BaseOptions {
 }
 
 export interface TeyvatConstructorOptions {
+  /**
+   * Caches all endpoint entries on startup. Default: false
+   */
   aggressive?: boolean;
+  /**
+   * Enables/Disables caching on the library. Default: true
+   *
+   */
+  cache?: boolean;
+  /**
+   * Enables/Disables silent mode, no errors or logs will be thrown. Default: false
+   */
+  silent?: boolean;
+  /**
+   * Base url for connecting with the API, Default: rest.teyvat.dev
+   */
   base?: string;
 }
 
 export type CUID = string;
 
 export type Token = string;
+
+export type FlushOptions =
+  | 'all'
+  | [
+      'characters'?,
+      'weapons'?,
+      'regions'?,
+      'elements'?,
+      'talents'?,
+      'charactersProfiles'?
+    ];

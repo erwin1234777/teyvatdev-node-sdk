@@ -1,4 +1,4 @@
-import type { Teyvat } from '..';
+import type Teyvat from '..';
 
 function cacheAll(this: Teyvat): Promise<boolean> {
   //eslint-disable-next-line no-async-promise-executor

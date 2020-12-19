@@ -1,4 +1,4 @@
-import { Teyvat } from '..';
+import type Teyvat from '..';
 
 function setRates(
   this: Teyvat,

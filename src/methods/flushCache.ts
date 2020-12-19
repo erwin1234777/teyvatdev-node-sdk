@@ -1,6 +1,7 @@
-import type { Teyvat } from '..';
+import type Teyvat from '..';
+import type { FlushOptions } from '../types';
 
-function flushCache(this: Teyvat, options?: string) {
+function flushCache(this: Teyvat, options?: FlushOptions) {
   if (!options) {
     this._charactersCache = new Map();
     this._weaponsCache = new Map();
@@ -9,10 +10,28 @@ function flushCache(this: Teyvat, options?: string) {
     this._talentsCache = new Map();
     this._charactersProfilesCache = new Map();
   } else {
-    switch (options) {
-      //TODO ADD specific cache flushing here
-      case '': {
-        break;
+    for (const option of options) {
+      switch (option) {
+        case 'characters': {
+          this._charactersCache = new Map();
+          break;
+        }
+        case 'weapons': {
+          this._weaponsCache = new Map();
+          break;
+        }
+        case 'regions': {
+          this._regionsCache = new Map();
+          break;
+        }
+        case 'elements': {
+          this._elementsCache = new Map();
+          break;
+        }
+        case 'charactersProfiles': {
+          this._charactersProfilesCache = new Map();
+          break;
+        }
       }
     }
   }

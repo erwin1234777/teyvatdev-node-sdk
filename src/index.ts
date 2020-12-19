@@ -1,4 +1,4 @@
-import {
+import type {
   Character,
   CharacterProfile,
   Element,
@@ -7,10 +7,16 @@ import {
   Weapon,
 } from '@teyvatdev/types';
 
-import { BaseOptions, CUID, TeyvatConstructorOptions, Token } from './types';
-import queue from './methods/queue';
+import type {
+  BaseOptions,
+  CUID,
+  FlushOptions,
+  TeyvatConstructorOptions,
+  Token,
+} from './types';
+import queue from './helpers/queue';
 import flushCache from './methods/flushCache';
-import cacheAll from './helpers/cacheAll';
+import cacheAll from './methods/cacheAll';
 import ready from './methods/ready';
 import retry from './helpers/retry';
 import { getCharacter, getCharacters } from './entities/character';
@@ -22,14 +28,13 @@ import {
   getCharacterProfile,
   getCharacterProfiles,
 } from './entities/characterProfile';
-
-//TODO IMPORTANT check axios response if it contains errors (200 OK)
+import errorHandler from './methods/errorHandler';
 
 /**
  * ## TS Example
  *
  * ```
- * import { Teyvat } from '../TeyvatLib/index';
+ * import Teyvat from '@teyvatdev/node-sdk';
  * const tey = new Teyvat('Token Here');
  *
  * tey.getCharacter('Amber').then((data) => {
@@ -41,8 +46,8 @@ import {
  *  ## JS Example
  *
  * ```
- * const Tey = require('../TeyvatLib/index');
- * const tey = new Tey('Token Here');
+ * const Teyvat = require('@teyvatdev/node-sdk');
+ * const tey = new Teyvat('Token Here');
  *
  * tey.getCharacter('Amber').then((data) => {
  * console.log(data);
@@ -73,7 +78,7 @@ import {
  *
  */
 
-export class Teyvat {
+class Teyvat {
   // Base URL
   readonly base!: string;
 
@@ -107,11 +112,6 @@ export class Teyvat {
     options?: BaseOptions
   ) => Promise<Character[] | undefined>;
 
-  /**
-   *
-   * CAREFULL //TODO path's are going to be deprecated in favor of params, make sure the path exists or you'll get 404's, use ID's
-   *
-   */
   public getWeapon!: (
     name: string,
     options?: BaseOptions
@@ -149,9 +149,12 @@ export class Teyvat {
     options?: BaseOptions
   ) => Promise<CharacterProfile[] | undefined>;
 
-  public flushCache!: (options?: string) => void;
+  public flushCache!: (options?: FlushOptions) => void;
 
   public cacheAll!: () => Promise<boolean>;
+
+  //Checks for errors, returns true on an error'ed request, returns false on a normalised 200 request
+  protected _errorHandler!: (err: any) => boolean;
 
   // When was last request made
   protected _lastRequest!: number;
@@ -171,8 +174,12 @@ export class Teyvat {
   // The reset timestamp IN SECONDS of when quota resets
   protected _reset!: number;
 
+  protected _silent!: boolean;
+
   // When client is ready to be used by the user
   protected _ready!: Promise<void>;
+
+  protected _cache!: boolean;
 
   // When the client has successfully fetched the initial rates from the API
   protected _hasRates!: boolean;
@@ -183,6 +190,8 @@ export class Teyvat {
   constructor(token: Token, options?: TeyvatConstructorOptions) {
     this._token = token;
     this.base = (options && options.base) || 'https://rest.teyvat.dev/';
+    this._cache = options?.cache !== undefined ? options.cache : true;
+    this._silent = options?.silent !== undefined ? options.silent : true;
     this._lastRequest = Date.now();
     this._quota = 0;
     this._quotaMax = 100;
@@ -205,6 +214,8 @@ export class Teyvat {
     this._ready = ready.bind(this)();
 
     this._retry = retry;
+
+    this._errorHandler = errorHandler.bind(this);
 
     this.getCharacter = getCharacter.bind(this);
 
@@ -243,3 +254,5 @@ export class Teyvat {
     }
   }
 }
+
+export default Teyvat;

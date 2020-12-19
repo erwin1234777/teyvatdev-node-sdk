@@ -1,10 +1,10 @@
+import type { AxiosResponse } from 'axios';
 import type { Element } from '@teyvatdev/types';
-import type { BaseOptions } from '../types';
-import type { Teyvat } from '..';
 
+import type Teyvat from '..';
+import type { BaseOptions } from '../types';
 import setRates from '../methods/setRates';
 import get from '../methods/get';
-import { AxiosResponse } from 'axios';
 
 async function getElement(
   this: Teyvat,
@@ -24,15 +24,18 @@ async function getElement(
   if (this._quota < 4 && this._hasRates)
     await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
 
-  const res: AxiosResponse<Element> = await get.bind(this)('element', {
-    name,
-  });
+  const res: AxiosResponse<Element> | undefined = await get.bind(this)(
+    'element',
+    {
+      name,
+    }
+  );
 
   if (res) {
     setRates.bind(this);
 
     //if data has been returned (aka not null) and there are no custom options, set cache
-    if ((!options && res.data) || options?.cache)
+    if (this._cache && ((!options && res.data) || options?.cache))
       this._elementsCache.set(name, res.data);
 
     return res.data;
@@ -58,13 +61,15 @@ async function getElements(
   if (this._quota < 4)
     await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
 
-  const res: AxiosResponse<Element[]> = await get.bind(this)('elements');
+  const res: AxiosResponse<Element[]> | undefined = await get.bind(this)(
+    'elements'
+  );
 
   if (res) {
     setRates.bind(this);
 
     //setting cache on normal request
-    if ((!options && res.data) || options?.cache) {
+    if (this._cache && ((!options && res.data) || options?.cache)) {
       this._elementsCache.set(null, res.data as Element[]);
       for (const char of res.data) this._elementsCache.set(char.name, char);
     }

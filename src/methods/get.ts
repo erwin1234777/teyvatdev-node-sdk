@@ -1,12 +1,12 @@
-import type { BaseOptions } from '../types';
-import type { Teyvat } from '..';
-
 import axios from 'axios';
+
+import type Teyvat from '..';
+import type { BaseOptions } from '../types';
 
 async function get(
   this: Teyvat,
   endpoint: string,
-  mainParam?: { [key: string]: string | number },
+  params?: { [key: string]: string | number },
   options?: BaseOptions
 ) {
   try {
@@ -15,13 +15,13 @@ async function get(
         Authorization: 'Bearer ' + this._token,
       },
       params: {
-        ...mainParam,
+        ...params,
         ...options,
       },
     });
   } catch (err) {
-    console.error(err);
-    throw Error(err);
+    this._errorHandler(err);
+    return;
   }
 }
 

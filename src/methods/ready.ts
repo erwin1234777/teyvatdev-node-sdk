@@ -1,5 +1,5 @@
+import type Teyvat from '..';
 import axios from 'axios';
-import type { Teyvat } from '..';
 
 async function flushCache(this: Teyvat) {
   // Dummy request
