@@ -27,11 +27,11 @@ npm i @teyvatdev/node-sdk
 
 ### In Node-js (JavaScript)
 
-```ts
-const Tey = require('@teyvatdev/node-sdk');
+```js
+const Teyvat = require('@teyvatdev/node-sdk');
 
 //Constructor
-const tey = new Tey.Teyvat('Token Here');
+const tey = new Teyvat('Token Here');
 
 //method getCharacter(), gets a character by name
 tey.getCharacter('Amber').then((data) => {
@@ -42,8 +42,8 @@ tey.getCharacter('Amber').then((data) => {
 
 ### In Node-js (TypeScript)
 
-```js
-import { Teyvat } from '@teyvatdev/node-sdk';
+```ts
+import Teyvat from '@teyvatdev/node-sdk';
 
 //Constructor
 const tey = new Teyvat('Token Here');
