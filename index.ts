@@ -292,7 +292,7 @@ export default class Teyvat {
       });
     this._errorHandler = function errorHandler(data: AxiosResponse) {
       if (this._silent) return false; //this is as good as swallowing errors, though the user set the lib in silent mode, need to add WARN/INFO/ERROR levels
-      if (data.status === 200) return false;
+      if (data?.status === 200) return false;
       console.log({ error: data.data.response });
       return true;
     };
@@ -328,7 +328,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data && data.data.status === 200) {
         this._hasRates = true;
         if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -374,7 +374,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -424,7 +424,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -468,7 +468,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -518,7 +518,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -562,7 +562,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -612,7 +612,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -656,7 +656,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -706,7 +706,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -750,7 +750,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -802,7 +802,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
@@ -848,7 +848,7 @@ export default class Teyvat {
       } catch (er) {
         this._errorHandler(er);
       }
-      if (!this._errorHandler(data)) return;
+      if (this._errorHandler(data)) return;
       if (data) {
         if (data.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = data.headers['x-ratelimit-remaining'];
