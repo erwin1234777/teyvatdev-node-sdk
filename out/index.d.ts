@@ -15,7 +15,9 @@ declare abstract class baseOptions {
      * example ?include={"talents": true}
      * which will include the connected talents table of the chars returned
      */
-    include?: any;
+    include?: {
+        [key: string]: any;
+    };
     /**
      * Used internally for aggressive caching
      */

@@ -151,7 +151,7 @@ class Teyvat {
         this._errorHandler = function errorHandler(data) {
             if (this._silent)
                 return false; //this is as good as swallowing errors, though the user set the lib in silent mode, need to add WARN/INFO/ERROR levels
-            if (data.status === 200)
+            if (data?.status === 200)
                 return false;
             console.log({ error: data.data.response });
             return true;
@@ -175,9 +175,9 @@ class Teyvat {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
+                        data: { ...options },
                         params: {
                             name: name,
-                            ...options,
                         },
                     });
                 });
@@ -185,7 +185,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data && data.data.status === 200) {
                 this._hasRates = true;
@@ -229,7 +229,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -275,7 +275,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -318,7 +318,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -364,7 +364,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -407,7 +407,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -453,7 +453,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -496,7 +496,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -542,7 +542,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -585,7 +585,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -631,7 +631,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
@@ -674,7 +674,7 @@ class Teyvat {
             catch (er) {
                 this._errorHandler(er);
             }
-            if (!this._errorHandler(data))
+            if (this._errorHandler(data))
                 return;
             if (data) {
                 if (data.headers['x-ratelimit-remaining'] !== undefined)
