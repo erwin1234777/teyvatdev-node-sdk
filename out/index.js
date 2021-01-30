@@ -2,7 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const axios_1 = tslib_1.__importDefault(require("axios"));
+const https_1 = require("https");
 const async = tslib_1.__importStar(require("async"));
+const events_1 = require("events");
+let agent = new https_1.Agent({ keepAlive: true });
+const axios = axios_1.default.create({
+    timeout: 60000,
+    httpsAgent: agent,
+});
 class baseOptions {
 }
 /**
@@ -52,8 +59,9 @@ class baseOptions {
  * ## All methods support optional arguments
  *
  */
-class Teyvat {
+class Teyvat extends events_1.EventEmitter {
     constructor(token, options) {
+        super();
         this._token = token;
         this.base = 'https://rest.teyvat.dev/';
         this._cache = options?.cache !== undefined ? options.cache : true;
@@ -64,6 +72,8 @@ class Teyvat {
         this._gracePeriod = 15 * 60 * 1000;
         this._reset = Math.ceil(Date.now() / 1000) + 900;
         this._hasRates = false;
+        this._artifactsCache = new Map();
+        this._artifactSetsCache = new Map();
         this._charactersCache = new Map();
         this._weaponsCache = new Map();
         this._regionsCache = new Map();
@@ -120,13 +130,19 @@ class Teyvat {
                     await this.getElements({ take: 300, cache: true });
                     await this.getTalents({ take: 300, cache: true });
                     await this.getCharacterProfiles({ take: 300, cache: true });
+                    await this.getArtifacts({ take: 300, cache: true });
+                    await this.getArtifactSets({
+                        take: 300,
+                        cache: true,
+                        include: { artifacts: true },
+                    });
                     res(true);
                 }
             });
         };
         this._ready = (async () => {
             //dummy request
-            let fetchRates = await axios_1.default.get(this.base + 'character', {
+            let fetchRates = await axios.get(this.base + 'character', {
                 headers: {
                     Authorization: 'Bearer ' + this._token,
                 },
@@ -141,6 +157,7 @@ class Teyvat {
                     this._quotaMax = fetchRates.headers['x-ratelimit-limit'];
                 if (fetchRates.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = fetchRates.headers['x-ratelimit-reset'];
+                this.emit('ready', true);
             }
         })();
         this._retry = (delay) => new Promise((resolve) => {
@@ -171,7 +188,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'character', {
+                    return await axios.get(this.base + 'character', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -216,7 +233,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'characters', {
+                    return await axios.get(this.base + 'characters', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -247,6 +264,104 @@ class Teyvat {
             }
             return data?.data;
         };
+        this.getArtifacts = async function getArtifacts(
+        /**
+         * Options:
+         *
+         */
+        options) {
+            //ensures that if theres already been a search on _charactersCache that it saves up on a request;
+            if (this._artifactsCache.has(null) && !options)
+                return this._artifactsCache.get(null);
+            //quota checker, if quota is lower than 4, await for next reset before attempting it.
+            if (this._quota < 4)
+                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
+            let data = undefined;
+            try {
+                data = await this._queue.push(async () => {
+                    return await axios.get(this.base + 'artifacts', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
+                });
+            }
+            catch (er) {
+                this._errorHandler(er);
+            }
+            if (this._errorHandler(data))
+                return;
+            if (data) {
+                if (data.headers['x-ratelimit-remaining'] !== undefined)
+                    this._quota = data.headers['x-ratelimit-remaining'];
+                if (data.headers['x-ratelimit-limit'] !== undefined)
+                    this._quotaMax = data.headers['x-ratelimit-limit'];
+                if (data.headers['x-ratelimit-reset'] !== undefined)
+                    this._reset = data.headers['x-ratelimit-reset'];
+                //setting cache on normal request
+                if (this._cache && ((!options && data.data) || options?.cache)) {
+                    this._artifactsCache.set(null, data.data);
+                    for (let d of data.data)
+                        this._artifactsCache.set(d.name, d);
+                }
+            }
+            return data?.data;
+        };
+        this.getArtifactSets = async function getArtifacts(
+        /**
+         * Options:
+         *
+         */
+        options) {
+            //ensures that if theres already been a search on _charactersCache that it saves up on a request;
+            if (this._artifactSetsCache.has(null) && !options)
+                return this._artifactSetsCache.get(null);
+            //@ts-ignore
+            if (options?.include)
+                options.include = JSON.stringify(options.include);
+            //@ts-ignore
+            if (options?.select)
+                options.select = JSON.stringify(options.select);
+            //quota checker, if quota is lower than 4, await for next reset before attempting it.
+            if (this._quota < 4)
+                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
+            let data = undefined;
+            try {
+                data = await this._queue.push(async () => {
+                    return await axios.get(this.base + 'artifactSets', {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...options,
+                        },
+                    });
+                });
+            }
+            catch (er) {
+                this._errorHandler(er);
+            }
+            if (this._errorHandler(data))
+                return;
+            if (data) {
+                if (data.headers['x-ratelimit-remaining'] !== undefined)
+                    this._quota = data.headers['x-ratelimit-remaining'];
+                if (data.headers['x-ratelimit-limit'] !== undefined)
+                    this._quotaMax = data.headers['x-ratelimit-limit'];
+                if (data.headers['x-ratelimit-reset'] !== undefined)
+                    this._reset = data.headers['x-ratelimit-reset'];
+                //setting cache on normal request
+                if (this._cache && ((!options && data.data) || options?.cache)) {
+                    this._artifactSetsCache.set(null, data.data);
+                    for (let d of data.data)
+                        this._artifactSetsCache.set(d.name, d);
+                }
+            }
+            return data?.data;
+        };
         this.getWeapon = async function getWeapon(id, 
         /**
          * Options:
@@ -262,7 +377,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'weapon/' + id, {
+                    return await axios.get(this.base + 'weapon/' + id, {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -305,7 +420,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'weapons', {
+                    return await axios.get(this.base + 'weapons', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -351,7 +466,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'region/' + id, {
+                    return await axios.get(this.base + 'region/' + id, {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -394,7 +509,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'regions', {
+                    return await axios.get(this.base + 'regions', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -440,7 +555,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'element/' + id, {
+                    return await axios.get(this.base + 'element/' + id, {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -483,7 +598,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'elements', {
+                    return await axios.get(this.base + 'elements', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -529,7 +644,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'talent/' + id, {
+                    return await axios.get(this.base + 'talent/' + id, {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -572,7 +687,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'talents', {
+                    return await axios.get(this.base + 'talents', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -618,7 +733,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'characterProfile/' + id, {
+                    return await axios.get(this.base + 'characterProfile/' + id, {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -661,7 +776,7 @@ class Teyvat {
             let data = undefined;
             try {
                 data = await this._queue.push(async () => {
-                    return await axios_1.default.get(this.base + 'characterProfiles', {
+                    return await axios.get(this.base + 'characterProfiles', {
                         headers: {
                             Authorization: 'Bearer ' + this._token,
                         },
@@ -694,9 +809,12 @@ class Teyvat {
         };
         if (options?.aggressive) {
             setTimeout(() => {
-                this.cacheAll().then((d) => console.log(d
-                    ? '[TeyvatLib]: Cached all entries'
-                    : '[TeyvatLib]: Failed to cache all entries'));
+                this.cacheAll().then((d) => {
+                    if (!options?.silent)
+                        console.log(d
+                            ? '[TeyvatLib]: Cached all entries'
+                            : '[TeyvatLib]: Failed to cache all entries');
+                });
             }, 30000);
         }
     }

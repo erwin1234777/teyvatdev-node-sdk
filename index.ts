@@ -1,6 +1,13 @@
-import axios, { AxiosAdapter, AxiosResponse } from 'axios';
+import Axios, { AxiosResponse } from 'axios';
+import { Agent } from 'https';
 import * as teyvatdev from '@teyvatdev/types';
 import * as async from 'async';
+import { EventEmitter } from 'events';
+let agent = new Agent({ keepAlive: true });
+const axios = Axios.create({
+  timeout: 60000,
+  httpsAgent: agent,
+});
 abstract class baseOptions {
   /**
    * skips index, example skip 5, returns past the 5th element
@@ -100,7 +107,7 @@ type TeyvatToken = string;
  *
  */
 
-export default class Teyvat {
+export default class Teyvat extends EventEmitter {
   //Base URL
   readonly base!: string;
   //TEYVAT token
@@ -111,6 +118,14 @@ export default class Teyvat {
   private _charactersCache!: Map<
     string | null,
     teyvatdev.Character | teyvatdev.Character[]
+  >;
+  private _artifactsCache!: Map<
+    string | null,
+    teyvatdev.Artifact | teyvatdev.Artifact[]
+  >;
+  private _artifactSetsCache!: Map<
+    string | null,
+    teyvatdev.ArtifactSet | teyvatdev.ArtifactSet[]
   >;
   private _weaponsCache!: Map<
     string | null,
@@ -174,6 +189,12 @@ export default class Teyvat {
   public getCharacterProfiles!: (
     options?: baseOptions
   ) => Promise<teyvatdev.CharacterProfile[] | undefined>;
+  public getArtifacts!: (
+    options?: baseOptions
+  ) => Promise<teyvatdev.Artifact[] | undefined>;
+  public getArtifactSets!: (
+    options?: baseOptions
+  ) => Promise<teyvatdev.ArtifactSet[] | undefined>;
   public flushCache!: (options?: flushOptions) => void;
   public cacheAll!: () => Promise<boolean>;
   //Checks for errors, returns true on an error'ed request, returns false on a normalised 200 request
@@ -198,7 +219,9 @@ export default class Teyvat {
   private _cache!: boolean;
   private _hasRates!: boolean;
   private _queue!: any;
+
   constructor(token: TeyvatToken, options?: TeyvatConstructorOptions) {
+    super();
     this._token = token;
     this.base = 'https://rest.teyvat.dev/';
     this._cache = options?.cache !== undefined ? options.cache : true;
@@ -209,6 +232,8 @@ export default class Teyvat {
     this._gracePeriod = 15 * 60 * 1000;
     this._reset = Math.ceil(Date.now() / 1000) + 900;
     this._hasRates = false;
+    this._artifactsCache = new Map();
+    this._artifactSetsCache = new Map();
     this._charactersCache = new Map();
     this._weaponsCache = new Map();
     this._regionsCache = new Map();
@@ -263,6 +288,12 @@ export default class Teyvat {
           await this.getElements({ take: 300, cache: true });
           await this.getTalents({ take: 300, cache: true });
           await this.getCharacterProfiles({ take: 300, cache: true });
+          await this.getArtifacts({ take: 300, cache: true });
+          await this.getArtifactSets({
+            take: 300,
+            cache: true,
+            include: { artifacts: true },
+          });
           res(true);
         }
       });
@@ -277,6 +308,7 @@ export default class Teyvat {
           name: 'Amber',
         },
       });
+
       if (fetchRates) {
         if (fetchRates.headers['x-ratelimit-remaining'] !== undefined)
           this._quota = fetchRates.headers['x-ratelimit-remaining'];
@@ -284,6 +316,7 @@ export default class Teyvat {
           this._quotaMax = fetchRates.headers['x-ratelimit-limit'];
         if (fetchRates.headers['x-ratelimit-reset'] !== undefined)
           this._reset = fetchRates.headers['x-ratelimit-reset'];
+        this.emit('ready', true);
       }
     })();
     this._retry = (delay: number): Promise<unknown> =>
@@ -393,6 +426,108 @@ export default class Teyvat {
         }
       }
       return data?.data as undefined | teyvatdev.Character[];
+    };
+    this.getArtifacts = async function getArtifacts(
+      /**
+       * Options:
+       *
+       */
+      options?: baseOptions
+    ): Promise<teyvatdev.Artifact[] | undefined> {
+      //ensures that if theres already been a search on _charactersCache that it saves up on a request;
+      if (this._artifactsCache.has(null) && !options)
+        return this._artifactsCache.get(null)! as teyvatdev.Artifact[];
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
+      if (this._quota < 4)
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
+      let data = undefined;
+      try {
+        data = await this._queue.push(async () => {
+          return await axios.get(this.base + 'artifacts', {
+            headers: {
+              Authorization: 'Bearer ' + this._token,
+            },
+            params: {
+              ...options,
+            },
+          });
+        });
+      } catch (er) {
+        this._errorHandler(er);
+      }
+      if (this._errorHandler(data)) return;
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (this._cache && ((!options && data.data) || options?.cache)) {
+          this._artifactsCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.Artifact[]
+          );
+          for (let d of data.data) this._artifactsCache.set(d.name, d);
+        }
+      }
+      return data?.data as undefined | teyvatdev.Artifact[];
+    };
+    this.getArtifactSets = async function getArtifacts(
+      /**
+       * Options:
+       *
+       */
+      options?: baseOptions
+    ): Promise<teyvatdev.ArtifactSet[] | undefined> {
+      //ensures that if theres already been a search on _charactersCache that it saves up on a request;
+      if (this._artifactSetsCache.has(null) && !options)
+        return this._artifactSetsCache.get(null)! as teyvatdev.ArtifactSet[];
+      //@ts-ignore
+      if (options?.include) options.include = JSON.stringify(options.include);
+      //@ts-ignore
+      if (options?.select) options.select = JSON.stringify(options.select);
+      //quota checker, if quota is lower than 4, await for next reset before attempting it.
+      if (this._quota < 4)
+        await this._retry(
+          Math.ceil(this._reset) - Math.ceil(Date.now() / 1000)
+        );
+      let data = undefined;
+      try {
+        data = await this._queue.push(async () => {
+          return await axios.get(this.base + 'artifactSets', {
+            headers: {
+              Authorization: 'Bearer ' + this._token,
+            },
+            params: {
+              ...options,
+            },
+          });
+        });
+      } catch (er) {
+        this._errorHandler(er);
+      }
+      if (this._errorHandler(data)) return;
+      if (data) {
+        if (data.headers['x-ratelimit-remaining'] !== undefined)
+          this._quota = data.headers['x-ratelimit-remaining'];
+        if (data.headers['x-ratelimit-limit'] !== undefined)
+          this._quotaMax = data.headers['x-ratelimit-limit'];
+        if (data.headers['x-ratelimit-reset'] !== undefined)
+          this._reset = data.headers['x-ratelimit-reset'];
+        //setting cache on normal request
+        if (this._cache && ((!options && data.data) || options?.cache)) {
+          this._artifactSetsCache.set(
+            null,
+            (data.data as unknown) as teyvatdev.ArtifactSet[]
+          );
+          for (let d of data.data) this._artifactSetsCache.set(d.name, d);
+        }
+      }
+      return data?.data as undefined | teyvatdev.ArtifactSet[];
     };
     this.getWeapon = async function getWeapon(
       id: CUID,
@@ -870,13 +1005,14 @@ export default class Teyvat {
     };
     if (options?.aggressive) {
       setTimeout(() => {
-        this.cacheAll().then((d) =>
-          console.log(
-            d
-              ? '[TeyvatLib]: Cached all entries'
-              : '[TeyvatLib]: Failed to cache all entries'
-          )
-        );
+        this.cacheAll().then((d) => {
+          if (!options?.silent)
+            console.log(
+              d
+                ? '[TeyvatLib]: Cached all entries'
+                : '[TeyvatLib]: Failed to cache all entries'
+            );
+        });
       }, 30000);
     }
   }

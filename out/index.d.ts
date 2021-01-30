@@ -1,4 +1,6 @@
+/// <reference types="node" />
 import * as teyvatdev from '@teyvatdev/types';
+import { EventEmitter } from 'events';
 declare abstract class baseOptions {
     /**
      * skips index, example skip 5, returns past the 5th element
@@ -95,10 +97,12 @@ declare type TeyvatToken = string;
  * ## All methods support optional arguments
  *
  */
-export default class Teyvat {
+export default class Teyvat extends EventEmitter {
     readonly base: string;
     private _token;
     private _charactersCache;
+    private _artifactsCache;
+    private _artifactSetsCache;
     private _weaponsCache;
     private _regionsCache;
     private _elementsCache;
@@ -116,6 +120,8 @@ export default class Teyvat {
     getTalents: (options?: baseOptions) => Promise<teyvatdev.Talent[] | undefined>;
     getCharacterProfile: (id: CUID, options?: baseOptions) => Promise<teyvatdev.CharacterProfile | undefined>;
     getCharacterProfiles: (options?: baseOptions) => Promise<teyvatdev.CharacterProfile[] | undefined>;
+    getArtifacts: (options?: baseOptions) => Promise<teyvatdev.Artifact[] | undefined>;
+    getArtifactSets: (options?: baseOptions) => Promise<teyvatdev.ArtifactSet[] | undefined>;
     flushCache: (options?: flushOptions) => void;
     cacheAll: () => Promise<boolean>;
     private _errorHandler;
