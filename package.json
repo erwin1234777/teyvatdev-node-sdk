@@ -1,7 +1,7 @@
 {
   "name": "@teyvatdev/node-sdk",
   "version": "1.0.5",
-  "description": "A Teyvat API wrapper",
+  "description": "Unofficial Genshin API Wrapper (Teyvat API)",
   "main": "index.js",
   "scripts": {
     "test": "mocha"
