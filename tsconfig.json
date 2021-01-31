@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "build",
+    "strict": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "importHelpers": true,
+    "watch": true,
+    "lib": [
+      "ES2019",
+      "DOM"
+    ],
+    "declaration": true,
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

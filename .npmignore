@@ -1,0 +1,6 @@
+.eslintrc.json
+.prettierrc.js
+.eslintignore
+
+.idea/
+src/
