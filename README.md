@@ -24,6 +24,7 @@ npm i @teyvatdev/node-sdk
 - [Constructor](#constructor-parameters)
 - [Methods](#methods)
 - [Internals](#internals)
+- [Events](#events)
 
 ### In Node-js (JavaScript)
 
@@ -90,6 +91,8 @@ tey.getCharacter('Amber').then((data) => {
 | `getRegions()`           | [options]       | Object[array], null | `let Elements = await tey.getElements();`                                              |
 | `getTalent()`            | CUID, [options] | Object, null        | `let Divine_Marksmanship = await tey.getTalent('ckiqng1u300210ns6clktnh3c');`          |
 | `getTalents()`           | [options]       | Object[array], null | `let Talents = await tey.getTalents();;`                                               |
+| `getArtifacts()`  | [options] | Object[array], null        | `let Artifacts = await tey.getArtifacts();`       |
+| `getArtifactSets()` | [options]       | Object[array], null | `let ArtifactSets = await tey.getArtifactSets();`                            |
 | `getCharacterProfile()`  | CUID, [options] | Object, null        | `let AmberProfile = await tey.getCharacterProfile('ckiffwvsx0000990i1z9retm4');`       |
 | `getCharacterProfiles()` | [options]       | Object[array], null | `let CharacterProfiles = await tey.getCharacterProfiles();`                            |
 | `flushCache()`           | [options]       |                     | `tey.flushCache()`                                                                     |
@@ -97,7 +100,13 @@ tey.getCharacter('Amber').then((data) => {
 
 ## How to get your token
 
-Currently, ask [HERE](https://discord.gg/Pb8aQqx7kr)
+Head over [HERE](https://teyvat.dev/signup)
+
+## Events
+
+| Event                   | Emits          | Working Example(copy paste)                                                            |
+| ------------------------ | --------------- |  -------------------------------------------------------------------------------------- |
+| `ready`         | true , undefined  | `tey.on('ready', (ret) => { if(ret) console.log('Finished startup!'); })`                                         |
 
 ## ``Internals``
 
