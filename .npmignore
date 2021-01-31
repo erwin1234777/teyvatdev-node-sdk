@@ -1,6 +1,7 @@
 .eslintrc.json
 .prettierrc.js
 .eslintignore
+tsconfig.json
 
 .idea/
 src/
