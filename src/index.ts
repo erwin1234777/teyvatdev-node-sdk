@@ -255,4 +255,4 @@ class Teyvat {
   }
 }
 
-export default Teyvat;
+export = Teyvat;
