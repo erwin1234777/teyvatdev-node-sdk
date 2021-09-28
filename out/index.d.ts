@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { AxiosResponse } from 'axios';
 import * as teyvatdev from '@teyvatdev/types';
 import { EventEmitter } from 'events';
 declare abstract class baseOptions {
@@ -24,6 +25,9 @@ declare abstract class baseOptions {
      * Used internally for aggressive caching
      */
     cache?: boolean;
+    select?: {
+        [key: string]: any;
+    };
 }
 declare type flushOptions = 'all' | [
     'characters'?,
@@ -99,15 +103,15 @@ declare type TeyvatToken = string;
  */
 export default class Teyvat extends EventEmitter {
     readonly base: string;
-    private _token;
-    private _charactersCache;
-    private _artifactsCache;
-    private _artifactSetsCache;
-    private _weaponsCache;
-    private _regionsCache;
-    private _elementsCache;
-    private _talentsCache;
-    private _charactersProfilesCache;
+    _token: TeyvatToken;
+    _charactersCache: Map<string | null, teyvatdev.Character | teyvatdev.Character[]>;
+    _artifactsCache: Map<string | null, teyvatdev.Artifact | teyvatdev.Artifact[]>;
+    _artifactSetsCache: Map<string | null, teyvatdev.ArtifactSet | teyvatdev.ArtifactSet[]>;
+    _weaponsCache: Map<string | null, teyvatdev.Weapon | teyvatdev.Weapon[]>;
+    _regionsCache: Map<string | null, teyvatdev.Region | teyvatdev.Region[]>;
+    _elementsCache: Map<string | null, teyvatdev.Element | teyvatdev.Element[]>;
+    _talentsCache: Map<string | null, teyvatdev.Talent | teyvatdev.Talent[]>;
+    _charactersProfilesCache: Map<string | null, teyvatdev.CharacterProfile | teyvatdev.CharacterProfile[]>;
     getCharacter: (name: string, options?: baseOptions) => Promise<teyvatdev.Character | undefined>;
     getCharacters: (options?: baseOptions) => Promise<teyvatdev.Character[] | undefined>;
     getWeapon: (name: string, options?: baseOptions) => Promise<teyvatdev.Weapon | undefined>;
@@ -124,18 +128,18 @@ export default class Teyvat extends EventEmitter {
     getArtifactSets: (options?: baseOptions) => Promise<teyvatdev.ArtifactSet[] | undefined>;
     flushCache: (options?: flushOptions) => void;
     cacheAll: () => Promise<boolean>;
-    private _errorHandler;
-    private _retry;
-    private _lastRequest;
-    private _quota;
-    private _quotaMax;
-    private _gracePeriod;
-    private _reset;
-    private _silent;
-    private _ready;
-    private _cache;
-    private _hasRates;
-    private _queue;
+    _errorHandler: (data: AxiosResponse) => boolean;
+    _retry: (delay: number) => Promise<unknown>;
+    _lastRequest: number;
+    _quota: number;
+    _quotaMax: number;
+    _gracePeriod: number;
+    _reset: number;
+    _silent: boolean;
+    _ready: Promise<void>;
+    _cache: boolean;
+    _hasRates: boolean;
+    _queue: any;
     constructor(token: TeyvatToken, options?: TeyvatConstructorOptions);
 }
 export {};

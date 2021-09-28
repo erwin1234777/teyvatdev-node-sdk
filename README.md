@@ -1,6 +1,6 @@
 # Genshin Impact API wrapper for JavaScript and Typescript
 
-## This is an SDK node-js wrapper to aid connecting with [Teyvat-API](https://github.com/teyvat-dev), which is an API to fetch info about the game Genshin Impact, by Mihoyo
+## This is an SDK node-js wrapper to aid connecting with [Teyvat-API](https://teyvat.dev/), which is an API to fetch info about the game Genshin Impact, by Mihoyo
 
 Official links: [[Npm]](https://www.npmjs.com/package/@teyvatdev/node-sdk) [[Github]](https://github.com/erwin1234777/teyvatdev-node-sdk) [[Website]](https://teyvat.dev/) [[Support]](https://discord.gg/6QEExsN) [[API support]](https://discord.gg/Pb8aQqx7kr)
 

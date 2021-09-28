@@ -6,7 +6,7 @@ import { EventEmitter } from 'events';
 let agent = new Agent({ keepAlive: true });
 const axios = Axios.create({
   timeout: 60000,
-  httpsAgent: agent,
+  //httpsAgent: agent,
 });
 abstract class baseOptions {
   /**
@@ -29,6 +29,7 @@ abstract class baseOptions {
    * Used internally for aggressive caching
    */
   cache?: boolean;
+  select?: { [key: string]: any };
 }
 
 type flushOptions =
@@ -111,39 +112,39 @@ export default class Teyvat extends EventEmitter {
   //Base URL
   readonly base!: string;
   //TEYVAT token
-  private _token!: TeyvatToken;
+  public _token!: TeyvatToken;
   //all methods below this point
   //each cache has an index of null, which is assigned to the default caller for the methods that dont require parameters. AKA getCharacters(), without parameter options.
   //TODO Add lifetime for the cached requests so they can be refreshed, in case there are any updates in the API's database, a setInterval every couple hours would be preferred over checking on every request has reached its lifetime
-  private _charactersCache!: Map<
+  public _charactersCache!: Map<
     string | null,
     teyvatdev.Character | teyvatdev.Character[]
   >;
-  private _artifactsCache!: Map<
+  public _artifactsCache!: Map<
     string | null,
     teyvatdev.Artifact | teyvatdev.Artifact[]
   >;
-  private _artifactSetsCache!: Map<
+  public _artifactSetsCache!: Map<
     string | null,
     teyvatdev.ArtifactSet | teyvatdev.ArtifactSet[]
   >;
-  private _weaponsCache!: Map<
+  public _weaponsCache!: Map<
     string | null,
     teyvatdev.Weapon | teyvatdev.Weapon[]
   >;
-  private _regionsCache!: Map<
+  public _regionsCache!: Map<
     string | null,
     teyvatdev.Region | teyvatdev.Region[]
   >;
-  private _elementsCache!: Map<
+  public _elementsCache!: Map<
     string | null,
     teyvatdev.Element | teyvatdev.Element[]
   >;
-  private _talentsCache!: Map<
+  public _talentsCache!: Map<
     string | null,
     teyvatdev.Talent | teyvatdev.Talent[]
   >;
-  private _charactersProfilesCache!: Map<
+  public _charactersProfilesCache!: Map<
     string | null,
     teyvatdev.CharacterProfile | teyvatdev.CharacterProfile[]
   >;
@@ -198,27 +199,27 @@ export default class Teyvat extends EventEmitter {
   public flushCache!: (options?: flushOptions) => void;
   public cacheAll!: () => Promise<boolean>;
   //Checks for errors, returns true on an error'ed request, returns false on a normalised 200 request
-  private _errorHandler!: (data: AxiosResponse) => boolean;
+  public _errorHandler!: (data: AxiosResponse) => boolean;
   //a retry function to delay
-  private _retry!: (delay: number) => Promise<unknown>;
+  public _retry!: (delay: number) => Promise<unknown>;
   //when was last request made
-  private _lastRequest!: number;
+  public _lastRequest!: number;
   //current quota left
-  private _quota!: number;
+  public _quota!: number;
   //maximum quota
-  private _quotaMax!: number;
+  public _quotaMax!: number;
   //the amount to be waited for the quota to reset
-  private _gracePeriod!: number;
+  public _gracePeriod!: number;
 
   //the reset timestamp IN SECONDS of when quota resets
-  private _reset!: number;
-  private _silent!: boolean;
+  public _reset!: number;
+  public _silent!: boolean;
   //When client is ready to be used by the user
-  private _ready!: Promise<void>;
+  public _ready!: Promise<void>;
   //When the client has successfully fetched the initial rates from the API
-  private _cache!: boolean;
-  private _hasRates!: boolean;
-  private _queue!: any;
+  public _cache!: boolean;
+  public _hasRates!: boolean;
+  public _queue!: any;
 
   constructor(token: TeyvatToken, options?: TeyvatConstructorOptions) {
     super();
@@ -282,7 +283,11 @@ export default class Teyvat extends EventEmitter {
       return new Promise(async (res) => {
         if (this._quota < 6) res(false);
         else {
-          await this.getCharacters({ take: 300, cache: true });
+          await this.getCharacters({
+            take: 300,
+            cache: true,
+            select: { talent: true },
+          });
           await this.getWeapons({ take: 300, cache: true });
           await this.getRegions({ take: 300, cache: true });
           await this.getElements({ take: 300, cache: true });
@@ -300,14 +305,19 @@ export default class Teyvat extends EventEmitter {
     };
     this._ready = (async () => {
       //dummy request
-      let fetchRates = await axios.get(this.base + 'character', {
-        headers: {
-          Authorization: 'Bearer ' + this._token,
-        },
-        params: {
-          name: 'Amber',
-        },
-      });
+      let fetchRates = await axios
+        .get(this.base + 'character', {
+          headers: {
+            Authorization: 'Bearer ' + this._token,
+          },
+          params: {
+            name: 'Amber',
+          },
+        })
+        .catch((err) => {
+          console.log(err);
+          return null;
+        });
 
       if (fetchRates) {
         if (fetchRates.headers['x-ratelimit-remaining'] !== undefined)
@@ -420,7 +430,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._charactersCache.set(
             null,
-            (data.data as unknown) as teyvatdev.Character[]
+            data.data as unknown as teyvatdev.Character[]
           );
           for (let d of data.data) this._charactersCache.set(d.name, d);
         }
@@ -469,7 +479,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._artifactsCache.set(
             null,
-            (data.data as unknown) as teyvatdev.Artifact[]
+            data.data as unknown as teyvatdev.Artifact[]
           );
           for (let d of data.data) this._artifactsCache.set(d.name, d);
         }
@@ -522,7 +532,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._artifactSetsCache.set(
             null,
-            (data.data as unknown) as teyvatdev.ArtifactSet[]
+            data.data as unknown as teyvatdev.ArtifactSet[]
           );
           for (let d of data.data) this._artifactSetsCache.set(d.name, d);
         }
@@ -616,7 +626,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._weaponsCache.set(
             null,
-            (data.data as unknown) as teyvatdev.Weapon[]
+            data.data as unknown as teyvatdev.Weapon[]
           );
           for (let d of data.data) this._weaponsCache.set(d.id, d);
         }
@@ -710,7 +720,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._regionsCache.set(
             null,
-            (data.data as unknown) as teyvatdev.Region[]
+            data.data as unknown as teyvatdev.Region[]
           );
           for (let d of data.data) this._regionsCache.set(d.id, d);
         }
@@ -804,7 +814,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._elementsCache.set(
             null,
-            (data.data as unknown) as teyvatdev.Element[]
+            data.data as unknown as teyvatdev.Element[]
           );
           for (let d of data.data) this._elementsCache.set(d.id, d);
         }
@@ -898,7 +908,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._talentsCache.set(
             null,
-            (data.data as unknown) as teyvatdev.Talent[]
+            data.data as unknown as teyvatdev.Talent[]
           );
           for (let d of data.data) this._talentsCache.set(d.id, d);
         }
@@ -996,7 +1006,7 @@ export default class Teyvat extends EventEmitter {
         if (this._cache && ((!options && data.data) || options?.cache)) {
           this._charactersProfilesCache.set(
             null,
-            (data.data as unknown) as teyvatdev.CharacterProfile[]
+            data.data as unknown as teyvatdev.CharacterProfile[]
           );
           for (let d of data.data) this._charactersProfilesCache.set(d.id, d);
         }

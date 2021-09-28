@@ -8,7 +8,6 @@ const events_1 = require("events");
 let agent = new https_1.Agent({ keepAlive: true });
 const axios = axios_1.default.create({
     timeout: 60000,
-    httpsAgent: agent,
 });
 class baseOptions {
 }
@@ -124,7 +123,11 @@ class Teyvat extends events_1.EventEmitter {
                 if (this._quota < 6)
                     res(false);
                 else {
-                    await this.getCharacters({ take: 300, cache: true });
+                    await this.getCharacters({
+                        take: 300,
+                        cache: true,
+                        select: { talent: true },
+                    });
                     await this.getWeapons({ take: 300, cache: true });
                     await this.getRegions({ take: 300, cache: true });
                     await this.getElements({ take: 300, cache: true });
@@ -142,13 +145,18 @@ class Teyvat extends events_1.EventEmitter {
         };
         this._ready = (async () => {
             //dummy request
-            let fetchRates = await axios.get(this.base + 'character', {
+            let fetchRates = await axios
+                .get(this.base + 'character', {
                 headers: {
                     Authorization: 'Bearer ' + this._token,
                 },
                 params: {
                     name: 'Amber',
                 },
+            })
+                .catch((err) => {
+                console.log(err);
+                return null;
             });
             if (fetchRates) {
                 if (fetchRates.headers['x-ratelimit-remaining'] !== undefined)
