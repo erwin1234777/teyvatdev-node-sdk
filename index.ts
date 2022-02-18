@@ -34,6 +34,83 @@ interface TeyvatConstructorOptions {
 }
 type CUID = string;
 type TeyvatToken = string;
+export async function login(email: string, password: string) {
+  if (!email) throw new Error('No email provided, or empty string!');
+  if (!password) throw new Error('No password provided, or empty string!');
+  if (typeof email !== 'string')
+    throw new Error('Type of email is not string!');
+  if (typeof password !== 'string')
+    throw new Error('Type of password is not string!');
+  try {
+    let res = await axios.post(
+      'https://rest.teyvat.dev/auth/login',
+      {
+        email,
+        password,
+      },
+      {}
+    );
+    if (res?.status === 200) {
+      return res.data as {
+        token: string;
+        user: {
+          id: string;
+          slimeColor: null | number;
+          role: string;
+          email: string;
+          createdAt: string;
+          updatedAt: string;
+          username: string;
+        };
+      };
+    } else {
+      console.log(res?.data);
+      return false;
+    }
+  } catch (e: any) {
+    if (e && e.data) console.log(e.data);
+    return false;
+  }
+}
+export async function createAccount(
+  email: string,
+  username: string,
+  password: string
+) {
+  if (!email) throw new Error('No email provided, or empty string!');
+  if (!username) throw new Error('No username provided, or empty string!');
+  if (!password) throw new Error('No password provided, or empty string!');
+  if (typeof email !== 'string')
+    throw new Error('Type of email is not string!');
+  if (typeof username !== 'string')
+    throw new Error('Type of username is not string!');
+  if (typeof password !== 'string')
+    throw new Error('Type of password is not string!');
+
+  try {
+    let res = await axios.post(
+      'https://rest.teyvat.dev/auth/signup',
+      {
+        email,
+        username,
+        password,
+      },
+      {}
+    );
+    if (res?.status === 200) {
+      console.log(
+        'Successfully registered on the API. Go and activate your account on the email provided. Then use .login() to get your token, make sure NOT to show your token to anyone'
+      );
+      return true;
+    } else {
+      console.log(res?.data);
+      return false;
+    }
+  } catch (e: any) {
+    if (e && e.data) console.log(e.data);
+    return false;
+  }
+}
 
 /**
  * ## TS Example
@@ -453,72 +530,7 @@ export default class Teyvat extends EventEmitter {
         setTimeout(resolve, Math.ceil(delay) * 1000);
       });
     };
-    this.login = async (email: string, password: string) => {
-      if (!email) throw new Error('No email provided, or empty string!');
-      if (!password) throw new Error('No password provided, or empty string!');
-      if (typeof email !== 'string')
-        throw new Error('Type of email is not string!');
-      if (typeof password !== 'string')
-        throw new Error('Type of password is not string!');
-      let res = await axios.post(
-        this.base + 'auth/login',
-        {
-          email,
-          password,
-        },
-        {}
-      );
-      if (res?.status === 200) {
-        return res.data as {
-          token: string;
-          user: {
-            id: string;
-            slimeColor: null | number;
-            role: string;
-            email: string;
-            createdAt: string;
-            updatedAt: string;
-            username: string;
-          };
-        };
-      } else {
-        console.log(res);
-        return false;
-      }
-    };
-    this.createAccount = async (
-      email: string,
-      username: string,
-      password: string
-    ) => {
-      if (!email) throw new Error('No email provided, or empty string!');
-      if (!username) throw new Error('No username provided, or empty string!');
-      if (!password) throw new Error('No password provided, or empty string!');
-      if (typeof email !== 'string')
-        throw new Error('Type of email is not string!');
-      if (typeof username !== 'string')
-        throw new Error('Type of username is not string!');
-      if (typeof password !== 'string')
-        throw new Error('Type of password is not string!');
-      let res = await axios.post(
-        this.base + 'auth/signup',
-        {
-          email,
-          username,
-          password,
-        },
-        {}
-      );
-      if (res?.status === 200) {
-        console.log(
-          'Successfully registered on the API. Go and activate your account on the email provided. Then use .login() to get your token, make sure NOT to show your token to anyone'
-        );
-        return true;
-      } else {
-        console.log(res);
-        return false;
-      }
-    };
+
     this._errorHandler = (data: AxiosResponse) => {
       if (!data) return false;
       if (this._silent) return false; //this is as good as swallowing errors, though the user set the lib in silent mode, need to add WARN/INFO/ERROR levels

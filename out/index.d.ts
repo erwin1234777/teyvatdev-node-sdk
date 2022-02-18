@@ -27,6 +27,19 @@ interface TeyvatConstructorOptions {
 }
 declare type CUID = string;
 declare type TeyvatToken = string;
+export declare function login(email: string, password: string): Promise<false | {
+    token: string;
+    user: {
+        id: string;
+        slimeColor: null | number;
+        role: string;
+        email: string;
+        createdAt: string;
+        updatedAt: string;
+        username: string;
+    };
+}>;
+export declare function createAccount(email: string, username: string, password: string): Promise<boolean>;
 /**
  * ## TS Example
  *

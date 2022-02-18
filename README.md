@@ -99,22 +99,22 @@ You HAVE TO ACTIVATE IT in the email you provided
 
 ```js
 
-const Tey = require('../TeyvatLib/index');
-const tey = new Tey.default('Token Here');
+const Tey = require('@teyvatdev/node-sdk');
 
-const email ='some_email@gmail.com';
+const email = 'some_email@gmail.com';
 const password = 'myfancypassword';
 const username = 'myusername';
 
-tey.createAccount(email, username, password).then((res) => {
- if(res) console.log('Success, now activate it on ur mail');
- else console.log('Something wrong happened!');
-})
+Tey.createAccount(email, username, password).then(res => {
+  if (res) console.log('Success, now activate it on ur mail');
+  else console.log('Something wrong happened!');
+});
 // AFTER YOU ACTIVATED IT, DONT RUN THE REST OR IT WILL ERROR
-tey.login(email, password).then(res => {
- if(!res) console.log('Failed to login! Did u make sure to active ur account in your email?');
- else console.log(res.token);
-})
+Tey.login(email, password).then(res => {
+  if (!res) console.log('Failed to login! Did u make sure to active ur account in your email?');
+  else console.log(res.token);
+});
+
 ```
 
 
