@@ -1,8 +1,8 @@
 # Genshin Impact API wrapper for JavaScript and Typescript
 
-## This is an SDK node-js wrapper to aid connecting with [Teyvat-API](https://teyvat.dev/), which is an API to fetch info about the game Genshin Impact, by Mihoyo
+## This is an SDK node-js wrapper to aid connecting with [Teyvat-API](https://rest.teyvat.dev/docs), which is an API to fetch info about the game Genshin Impact, by Mihoyo
 
-Official links: [[Npm]](https://www.npmjs.com/package/@teyvatdev/node-sdk) [[Github]](https://github.com/erwin1234777/teyvatdev-node-sdk) [[Website]](https://teyvat.dev/) [[Support]](https://discord.gg/6QEExsN) [[API support]](https://discord.gg/Pb8aQqx7kr)
+Official links: [[Npm]](https://www.npmjs.com/package/@teyvatdev/node-sdk) [[Github]](https://github.com/erwin1234777/teyvatdev-node-sdk) [[Website]](https://rest.teyvat.dev/docs) [[Support]](https://discord.gg/6QEExsN) [[API support]](https://discord.gg/Pb8aQqx7kr)
 
 ## Installation
 
@@ -32,7 +32,7 @@ npm i @teyvatdev/node-sdk
 const Tey = require('@teyvatdev/node-sdk');
 
 //Constructor
-const tey = new Tey.Teyvat('Token Here');
+const tey = new Tey.default('Token Here');
 
 //method getCharacter(), gets a character by name
 tey.getCharacter('Amber').then((data) => {
@@ -65,48 +65,69 @@ tey.getCharacter('Amber').then((data) => {
 | `options.aggressive` | Boolean | Yes      | This will fetch and cache all endpoints into the client, RAM expensive, be careful. Default: false |
 | `options.cache` | Boolean | Yes      | This will enable or disable caching internally. Default: true  |
 | `options.silent` | Boolean | Yes      | This will make it so the library does not throw any logs or errors, be carefull, this can swallow important errors. Default: false |
+# Methods options
+Method options have been deprecated in favor of a more "begginer friendly" lib. The library is set to cache and return
+all data by default, it'll search for cached first, and only fetch the missing entries. This was done to prevent accidental API
+abuse. If you plan on using custom requests, i made the method `<Teyvat>.baseRequest()` public for you to use, and as of that, i assume you are good to go on your own. Intellisense will help you.
 
-## Methods
-
-### All methods allow for custom options Object, which are those
-
-| Key       | Description                                                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `skip`    | Number, skips the index until that specified index. 5, for example, skips the first 5 entries and starts getting entries after that. |
-| `take`    | Number, the amount of entries to be returned                                                                                         |
-| `include` | Not used yet                                                                                                                 |
-| `cache`   | Boolean, skips the custom check inside the library and forces the returned entries to be cached                                       |
 
 #### [] means optional parameter
 
 | Method                   | Params          | Returns             | Working Example(copy paste)                                                            |
 | ------------------------ | --------------- | ------------------- | -------------------------------------------------------------------------------------- |
-| `getCharacter()`         | name, [options] | Object, null        | `let Amber = await tey.getCharacter('Amber');`                                         |
-| `getCharacters()`        | [options]       | Object[array], null | `let Characters = await tey.getCharacters();`                                          |
-| `getWeapon()`            | ID, [options]   | Object, null        | `let FavoniuSword = await tey.getWeapon('10');`                                        |
-| `getWeapons()`           | [options]       | Object[array], null | `let Weapons = await tey.getWeapons();`                                                |
-| `getRegion()`            | CUID, [options] | Object, null        | `let Mondstad = await tey.getRegion('ckifg54kg0000vf0iclar2lp6');`                     |
-| `getRegions()`           | [options]       | Object[array], null | `let Regions = await tey.getRegions();`                                                |
-| `getRegion()`            | CUID, [options] | Object, null        | `let Anemo = await tey.getElement('ckifg2oxf0000n30i3k0e3s7m');`                       |
-| `getRegions()`           | [options]       | Object[array], null | `let Elements = await tey.getElements();`                                              |
-| `getTalent()`            | CUID, [options] | Object, null        | `let Divine_Marksmanship = await tey.getTalent('ckiqng1u300210ns6clktnh3c');`          |
-| `getTalents()`           | [options]       | Object[array], null | `let Talents = await tey.getTalents();;`                                               |
-| `getArtifacts()`  | [options] | Object[array], null        | `let Artifacts = await tey.getArtifacts();`       |
-| `getArtifactSets()` | [options]       | Object[array], null | `let ArtifactSets = await tey.getArtifactSets();`                            |
-| `getCharacterProfile()`  | CUID, [options] | Object, null        | `let AmberProfile = await tey.getCharacterProfile('ckiffwvsx0000990i1z9retm4');`       |
-| `getCharacterProfiles()` | [options]       | Object[array], null | `let CharacterProfiles = await tey.getCharacterProfiles();`                            |
+| `getCharacter()`         | name | Object, null        | `let Amber = await tey.getCharacter('Amber');`                                         |
+| `getCharacters()`        |       | Object[array], null | `let Characters = await tey.getCharacters();`                                          |
+| `getWeapon()`            | ID   | Object, null        | `let FavoniuSword = await tey.getWeapon('10');`                                        |
+| `getWeapons()`           |       | Object[array], null | `let Weapons = await tey.getWeapons();`                                                |
+| `getRegion()`            | CUID | Object, null        | `let Mondstad = await tey.getRegion('ckifg54kg0000vf0iclar2lp6');`                     |
+| `getRegions()`           |       | Object[array], null | `let Regions = await tey.getRegions();`                                                |
+| `getRegion()`            | CUID | Object, null        | `let Anemo = await tey.getElement('ckifg2oxf0000n30i3k0e3s7m');`                       |
+| `getRegions()`           |       | Object[array], null | `let Elements = await tey.getElements();`                                              |
+| `getTalent()`            | CUID | Object, null        | `let Divine_Marksmanship = await tey.getTalent('ckiqng1u300210ns6clktnh3c');`          |
+| `getTalents()`           |        | Object[array], null | `let Talents = await tey.getTalents();;`                                               |
+| `getArtifacts()`  |  | Object[array], null        | `let Artifacts = await tey.getArtifacts();`       |
+| `getArtifactSets()` |        | Object[array], null | `let ArtifactSets = await tey.getArtifactSets();`                            |
+| `getCharacterProfile()`  | CUID | Object, null        | `let AmberProfile = await tey.getCharacterProfile('ckiffwvsx0000990i1z9retm4');`       |
+| `getCharacterProfiles()` |      | Object[array], null | `let CharacterProfiles = await tey.getCharacterProfiles();`                            |
 | `flushCache()`           | [options]       |                     | `tey.flushCache()`                                                                     |
 | `cacheAll()`             |                 | boolean             | `tey.cacheAll()` Returns true if everything has been cached, false if something failed |
 
 ## How to get your token
 
-Head over [HERE](https://teyvat.dev/signup)
+The lib now includes a method for creating an account and getting a token. Here are some snippets.
+You HAVE TO ACTIVATE IT in the email you provided
+
+```js
+
+const Tey = require('../TeyvatLib/index');
+const tey = new Tey.default('Token Here');
+
+const email ='some_email@gmail.com';
+const password = 'myfancypassword';
+const username = 'myusername';
+
+tey.createAccount(email, username, password).then((res) => {
+ if(res) console.log('Success, now activate it on ur mail');
+ else console.log('Something wrong happened!');
+})
+// AFTER YOU ACTIVATED IT, DONT RUN THE REST OR IT WILL ERROR
+tey.login(email, password).then(res => {
+ if(!res) console.log('Failed to login! Did u make sure to active ur account in your email?');
+ else console.log(res.token);
+})
+```
+
 
 ## Events
+
+Observations: the event `ready` will be emitted AFTER the lib has cached all entries if you provided the `aggressive` flag in the constructor options
 
 | Event                   | Emits          | Working Example(copy paste)                                                            |
 | ------------------------ | --------------- |  -------------------------------------------------------------------------------------- |
 | `ready`         | true , undefined  | `tey.on('ready', (ret) => { if(ret) console.log('Finished startup!'); })`                                         |
+| `restRequest`         | Object[data]  | `tey.on('restRequest', (req) => { console.log('request sent ', req) })`                                         |
+| `restError`         | Object[error]  | `tey.on('restError', (err) => { console.log('request returned an error ', err) })`                                         |
+| `errorHandler`         | Object[data]  | `tey.on('errorHandler', (err) => { console.log('the handler handled an error ', err) })`                                         |
 
 ## ``Internals``
 

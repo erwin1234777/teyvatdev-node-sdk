@@ -1,34 +1,7 @@
 /// <reference types="node" />
-import { AxiosResponse } from 'axios';
 import * as teyvatdev from '@teyvatdev/types';
+import { AxiosResponse } from 'axios';
 import { EventEmitter } from 'events';
-declare abstract class baseOptions {
-    /**
-     * skips index, example skip 5, returns past the 5th element
-     *
-     */
-    skip?: number;
-    /**
-     * example {take:5};
-     * same as max, returned amount
-     *
-     */
-    take?: number;
-    /**
-     * example ?include={"talents": true}
-     * which will include the connected talents table of the chars returned
-     */
-    include?: {
-        [key: string]: any;
-    };
-    /**
-     * Used internally for aggressive caching
-     */
-    cache?: boolean;
-    select?: {
-        [key: string]: any;
-    };
-}
 declare type flushOptions = 'all' | [
     'characters'?,
     'weapons'?,
@@ -71,7 +44,7 @@ declare type TeyvatToken = string;
  *
  * ```
  * const Tey = require('../TeyvatLib/index');
- * const tey = new Tey('Token Here');
+ * const tey = new Tey.default('Token Here');
  *
  * tey.getCharacter('Amber').then((data) => {
  * console.log(data);
@@ -79,6 +52,23 @@ declare type TeyvatToken = string;
  * })
  *
  * ```
+ * ## How to get your token:
+ *
+ * ```
+ * const Tey = require('../TeyvatLib/index');
+ * const tey = new Tey.default('Token Here');
+ * tey.createAccount('some_email@gmail.com', 'myusername', 'myfancypassword').then((res) => {
+ *  if(res) console.log('Success, now activate it on ur mail');
+ *  else console.log('Something wrong happened!');
+ * })
+ * // AFTER YOU ACTIVATED IT, DONT RUN THE REST OR IT WILL ERROR
+ *
+ * tey.login('some_email@gmail.com', 'myfancypassword').then(res => {
+ *  if(!res) console.log('Failed to login! Did u make sure to active ur account in your email?');
+ *  else console.log(res.token);
+ * })
+ * ```
+ *
  * ## All examples
  * ```
  * let Amber = await tey.getCharacter('Amber');
@@ -112,24 +102,51 @@ export default class Teyvat extends EventEmitter {
     _elementsCache: Map<string | null, teyvatdev.Element | teyvatdev.Element[]>;
     _talentsCache: Map<string | null, teyvatdev.Talent | teyvatdev.Talent[]>;
     _charactersProfilesCache: Map<string | null, teyvatdev.CharacterProfile | teyvatdev.CharacterProfile[]>;
-    getCharacter: (name: string, options?: baseOptions) => Promise<teyvatdev.Character | undefined>;
-    getCharacters: (options?: baseOptions) => Promise<teyvatdev.Character[] | undefined>;
-    getWeapon: (name: string, options?: baseOptions) => Promise<teyvatdev.Weapon | undefined>;
-    getWeapons: (options?: baseOptions) => Promise<teyvatdev.Weapon[] | undefined>;
-    getRegion: (id: CUID, options?: baseOptions) => Promise<teyvatdev.Region | undefined>;
-    getRegions: (options?: baseOptions) => Promise<teyvatdev.Region[] | undefined>;
-    getElement: (id: CUID, options?: baseOptions) => Promise<teyvatdev.Region | undefined>;
-    getElements: (options?: baseOptions) => Promise<teyvatdev.Region[] | undefined>;
-    getTalent: (id: CUID, options?: baseOptions) => Promise<teyvatdev.Talent | undefined>;
-    getTalents: (options?: baseOptions) => Promise<teyvatdev.Talent[] | undefined>;
-    getCharacterProfile: (id: CUID, options?: baseOptions) => Promise<teyvatdev.CharacterProfile | undefined>;
-    getCharacterProfiles: (options?: baseOptions) => Promise<teyvatdev.CharacterProfile[] | undefined>;
-    getArtifacts: (options?: baseOptions) => Promise<teyvatdev.Artifact[] | undefined>;
-    getArtifactSets: (options?: baseOptions) => Promise<teyvatdev.ArtifactSet[] | undefined>;
+    getCharacter: (name: string) => Promise<teyvatdev.Character | undefined>;
+    getCharacters: () => Promise<teyvatdev.Character[] | undefined>;
+    getWeapon: (name: string) => Promise<teyvatdev.Weapon | undefined>;
+    getWeapons: () => Promise<teyvatdev.Weapon[] | undefined>;
+    getRegion: (id: CUID) => Promise<teyvatdev.Region | undefined>;
+    getRegions: () => Promise<teyvatdev.Region[] | undefined>;
+    getElement: (id: CUID) => Promise<teyvatdev.Region | undefined>;
+    getElements: () => Promise<teyvatdev.Region[] | undefined>;
+    getTalent: (id: CUID) => Promise<teyvatdev.Talent | undefined>;
+    getTalents: () => Promise<teyvatdev.Talent[] | undefined>;
+    getCharacterProfile: (id: CUID) => Promise<teyvatdev.CharacterProfile | undefined>;
+    getCharacterProfiles: () => Promise<teyvatdev.CharacterProfile[] | undefined>;
+    getArtifacts: () => Promise<teyvatdev.Artifact[] | undefined>;
+    getArtifactSets: () => Promise<teyvatdev.ArtifactSet[] | undefined>;
     flushCache: (options?: flushOptions) => void;
+    baseRequest: (param: {
+        endpoint: string;
+        name?: string;
+        skipCacheCheck?: boolean;
+        dontCache?: boolean;
+        cache: Map<any, any>;
+        body?: {
+            [key: string]: any;
+        };
+        params?: {
+            [key: string]: any;
+        };
+    }) => Promise<any>;
+    setSkips: (fn: Function, payload: any) => Promise<any>;
     cacheAll: () => Promise<boolean>;
     _errorHandler: (data: AxiosResponse) => boolean;
     _retry: (delay: number) => Promise<unknown>;
+    createAccount: (email: string, username: string, password: string) => Promise<boolean>;
+    login: (email: string, password: string) => Promise<false | {
+        token: string;
+        user: {
+            id: string;
+            slimeColor: null | number;
+            role: string;
+            email: string;
+            createdAt: string;
+            updatedAt: string;
+            username: string;
+        };
+    }>;
     _lastRequest: number;
     _quota: number;
     _quotaMax: number;

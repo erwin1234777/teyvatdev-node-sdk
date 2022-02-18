@@ -1,16 +1,34 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const axios_1 = tslib_1.__importDefault(require("axios"));
-const https_1 = require("https");
-const async = tslib_1.__importStar(require("async"));
+const async = __importStar(require("async"));
+const axios_1 = __importDefault(require("axios"));
 const events_1 = require("events");
-let agent = new https_1.Agent({ keepAlive: true });
 const axios = axios_1.default.create({
     timeout: 60000,
+    //httpsAgent: agent,
 });
-class baseOptions {
-}
 /**
  * ## TS Example
  *
@@ -28,7 +46,7 @@ class baseOptions {
  *
  * ```
  * const Tey = require('../TeyvatLib/index');
- * const tey = new Tey('Token Here');
+ * const tey = new Tey.default('Token Here');
  *
  * tey.getCharacter('Amber').then((data) => {
  * console.log(data);
@@ -36,6 +54,23 @@ class baseOptions {
  * })
  *
  * ```
+ * ## How to get your token:
+ *
+ * ```
+ * const Tey = require('../TeyvatLib/index');
+ * const tey = new Tey.default('Token Here');
+ * tey.createAccount('some_email@gmail.com', 'myusername', 'myfancypassword').then((res) => {
+ *  if(res) console.log('Success, now activate it on ur mail');
+ *  else console.log('Something wrong happened!');
+ * })
+ * // AFTER YOU ACTIVATED IT, DONT RUN THE REST OR IT WILL ERROR
+ *
+ * tey.login('some_email@gmail.com', 'myfancypassword').then(res => {
+ *  if(!res) console.log('Failed to login! Did u make sure to active ur account in your email?');
+ *  else console.log(res.token);
+ * })
+ * ```
+ *
  * ## All examples
  * ```
  * let Amber = await tey.getCharacter('Amber');
@@ -59,7 +94,63 @@ class baseOptions {
  *
  */
 class Teyvat extends events_1.EventEmitter {
-    constructor(token, options) {
+    //Base URL
+    base;
+    //TEYVAT token
+    _token;
+    //all methods below this point
+    //each cache has an index of null, which is assigned to the default caller for the methods that dont require parameters. AKA getCharacters(), without parameter options.
+    //TODO Add lifetime for the cached requests so they can be refreshed, in case there are any updates in the API's database, a setInterval every couple hours would be preferred over checking on every request has reached its lifetime
+    _charactersCache;
+    _artifactsCache;
+    _artifactSetsCache;
+    _weaponsCache;
+    _regionsCache;
+    _elementsCache;
+    _talentsCache;
+    _charactersProfilesCache;
+    getCharacter;
+    getCharacters;
+    getWeapon;
+    getWeapons;
+    getRegion;
+    getRegions;
+    getElement;
+    getElements;
+    getTalent;
+    getTalents;
+    getCharacterProfile;
+    getCharacterProfiles;
+    getArtifacts;
+    getArtifactSets;
+    flushCache;
+    baseRequest;
+    setSkips;
+    cacheAll;
+    //Checks for errors, returns true on an error'ed request, returns false on a normalised 200 request
+    _errorHandler;
+    //a retry function to delay
+    _retry;
+    createAccount;
+    login;
+    //when was last request made
+    _lastRequest;
+    //current quota left
+    _quota;
+    //maximum quota
+    _quotaMax;
+    //the amount to be waited for the quota to reset
+    _gracePeriod;
+    //the reset timestamp IN SECONDS of when quota resets
+    _reset;
+    _silent;
+    //When client is ready to be used by the user
+    _ready;
+    //When the client has successfully fetched the initial rates from the API
+    _cache;
+    _hasRates;
+    _queue;
+    constructor(token, options = {}) {
         super();
         this._token = token;
         this.base = 'https://rest.teyvat.dev/';
@@ -118,26 +209,135 @@ class Teyvat extends events_1.EventEmitter {
                 }
             }
         };
-        this.cacheAll = async function cacheAll() {
+        this.baseRequest = async (param) => {
+            let data = undefined;
+            //checking if skipCacheCheck is true
+            if (!param.skipCacheCheck && param.name)
+                if (param.cache.has(param.name))
+                    return param.cache.get(param.name);
+            //checking for quota, if its lower than 4, wait until next reset
+            if (this._quota < 4 && this._hasRates)
+                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
+            // formatting body/params / accounting for stupidity
+            if (param.params?.take &&
+                (param.params.take > 100 || param.params.take <= 0))
+                param.params.take = 100;
+            if (param.body?.take && (param.body.take > 100 || param.body.take <= 0))
+                param.body.take = 100;
+            try {
+                this.emit('restRequest', { data: param });
+                data = await this._queue.push(async () => {
+                    return await axios
+                        .post(`${this.base}${param.endpoint}`, {
+                        ...param.body,
+                    }, {
+                        headers: {
+                            Authorization: 'Bearer ' + this._token,
+                        },
+                        params: {
+                            ...param.params,
+                            name: param.name,
+                        },
+                    })
+                        .catch((e) => {
+                        this.emit('restError', { error: e });
+                        return e;
+                    });
+                });
+                this.emit('restResponse', { data });
+            }
+            catch (er) {
+                this.emit('restResponse', { data });
+                //@ts-expect-error
+                this._errorHandler(er);
+            }
+            if (this._errorHandler(data))
+                return;
+            if (data && data.status === 200) {
+                this._hasRates = true;
+                if (data.headers['x-ratelimit-remaining'] !== undefined)
+                    this._quota = data.headers['x-ratelimit-remaining'];
+                if (data.headers['x-ratelimit-limit'] !== undefined)
+                    this._quotaMax = data.headers['x-ratelimit-limit'];
+                if (data.headers['x-ratelimit-reset'] !== undefined)
+                    this._reset = data.headers['x-ratelimit-reset'];
+                //if data has been returned(aka not null) and there are no custom options, set cache
+                if (!param.dontCache && data.data) {
+                    param.cache.set(param.name ? param.name : null, data.data);
+                    if (data.data.length)
+                        for (let d of data.data)
+                            if (d.name)
+                                param.cache.set(d.name, d);
+                }
+            }
+            return data?.data;
+        };
+        this.setSkips = async (fn, payload) => {
+            let _payload = payload ?? { body: {}, params: {} };
+            if (!_payload.body?.take)
+                _payload.body.take = 100;
+            let res = await new Promise(async (r, rej) => {
+                r(await fn(_payload));
+            });
+            // console.log({ res, _payload });
+            if (res?.length === (_payload?.body.take ?? 100)) {
+                _payload.body.skip = (_payload.body.skip ?? 0) + res.length;
+                res = res.concat(await this.setSkips(fn.bind(this), _payload));
+            }
+            return res;
+        };
+        this.cacheAll = async () => {
             return new Promise(async (res) => {
                 if (this._quota < 6)
                     res(false);
                 else {
-                    await this.getCharacters({
-                        take: 300,
-                        cache: true,
-                        select: { talent: true },
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'characters',
+                        skipCacheCheck: true,
+                        cache: this._charactersCache,
+                        body: { take: 100, include: { talents: true, ascensions: true } },
                     });
-                    await this.getWeapons({ take: 300, cache: true });
-                    await this.getRegions({ take: 300, cache: true });
-                    await this.getElements({ take: 300, cache: true });
-                    await this.getTalents({ take: 300, cache: true });
-                    await this.getCharacterProfiles({ take: 300, cache: true });
-                    await this.getArtifacts({ take: 300, cache: true });
-                    await this.getArtifactSets({
-                        take: 300,
-                        cache: true,
-                        include: { artifacts: true },
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'weapons',
+                        skipCacheCheck: true,
+                        cache: this._weaponsCache,
+                        body: { take: 100, include: { weaponAscensions: true } },
+                    });
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'regions',
+                        skipCacheCheck: true,
+                        cache: this._regionsCache,
+                        body: { take: 100 },
+                    });
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'elements',
+                        skipCacheCheck: true,
+                        cache: this._elementsCache,
+                        body: { take: 100 },
+                    });
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'talents',
+                        skipCacheCheck: true,
+                        cache: this._talentsCache,
+                        body: { take: 100 },
+                    });
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'characterProfiles',
+                        skipCacheCheck: true,
+                        cache: this._charactersProfilesCache,
+                        body: { take: 100 },
+                    });
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'artifacts',
+                        skipCacheCheck: true,
+                        cache: this._artifactsCache,
+                        body: { take: 100 },
+                    });
+                    await this.setSkips(this.baseRequest.bind(this), {
+                        endpoint: 'artifactSets',
+                        skipCacheCheck: true,
+                        cache: this._artifactSetsCache,
+                        body: { take: 100, include: { artifacts: true } },
                     });
                     res(true);
                 }
@@ -165,666 +365,230 @@ class Teyvat extends events_1.EventEmitter {
                     this._quotaMax = fetchRates.headers['x-ratelimit-limit'];
                 if (fetchRates.headers['x-ratelimit-reset'] !== undefined)
                     this._reset = fetchRates.headers['x-ratelimit-reset'];
+                if (options?.aggressive)
+                    await this.cacheAll();
                 this.emit('ready', true);
             }
         })();
-        this._retry = (delay) => new Promise((resolve) => {
-            if (Math.sign(delay) === -1)
-                delay = 900;
-            setTimeout(resolve, Math.ceil(delay) * 1000);
-        });
-        this._errorHandler = function errorHandler(data) {
+        this._retry = async function _retry(delay) {
+            return new Promise((resolve) => {
+                if (Math.sign(delay) === -1)
+                    delay = 900;
+                setTimeout(resolve, Math.ceil(delay) * 1000);
+            });
+        };
+        this.login = async (email, password) => {
+            if (!email)
+                throw new Error('No email provided, or empty string!');
+            if (!password)
+                throw new Error('No password provided, or empty string!');
+            if (typeof email !== 'string')
+                throw new Error('Type of email is not string!');
+            if (typeof password !== 'string')
+                throw new Error('Type of password is not string!');
+            let res = await axios.post(this.base + 'auth/login', {
+                email,
+                password,
+            }, {});
+            if (res?.status === 200) {
+                return res.data;
+            }
+            else {
+                console.log(res);
+                return false;
+            }
+        };
+        this.createAccount = async (email, username, password) => {
+            if (!email)
+                throw new Error('No email provided, or empty string!');
+            if (!username)
+                throw new Error('No username provided, or empty string!');
+            if (!password)
+                throw new Error('No password provided, or empty string!');
+            if (typeof email !== 'string')
+                throw new Error('Type of email is not string!');
+            if (typeof username !== 'string')
+                throw new Error('Type of username is not string!');
+            if (typeof password !== 'string')
+                throw new Error('Type of password is not string!');
+            let res = await axios.post(this.base + 'auth/signup', {
+                email,
+                username,
+                password,
+            }, {});
+            if (res?.status === 200) {
+                console.log('Successfully registered on the API. Go and activate your account on the email provided. Then use .login() to get your token, make sure NOT to show your token to anyone');
+                return true;
+            }
+            else {
+                console.log(res);
+                return false;
+            }
+        };
+        this._errorHandler = (data) => {
+            if (!data)
+                return false;
             if (this._silent)
                 return false; //this is as good as swallowing errors, though the user set the lib in silent mode, need to add WARN/INFO/ERROR levels
             if (data?.status === 200)
                 return false;
-            console.log({ error: data.data.response });
+            this.emit('errorHandler', { data });
             return true;
         };
-        this.getCharacter = async function getCharacter(name, 
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //checking if cache has that character
-            if (this._charactersCache.has(name) && !options)
-                return this._charactersCache.get(name);
-            //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4 && this._hasRates)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'character', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        data: { ...options },
-                        params: {
-                            name: name,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data && data.data.status === 200) {
-                this._hasRates = true;
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //if data has been returned(aka not null) and there are no custom options, set cache
-                if (this._cache && ((!options && data.data) || options?.cache))
-                    this._charactersCache.set(name, data.data);
-            }
-            return data?.data;
+        this.getCharacter = async function getCharacter(name) {
+            let data = await this.baseRequest({
+                endpoint: 'character',
+                name,
+                skipCacheCheck: false,
+                cache: this._charactersCache,
+            });
+            if (data)
+                return data;
+            return undefined;
         };
-        this.getCharacters = async function getCharacters(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _charactersCache that it saves up on a request;
-            if (this._charactersCache.has(null) && !options)
-                return this._charactersCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'characters', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._charactersCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._charactersCache.set(d.name, d);
-                }
-            }
-            return data?.data;
+        this.getCharacters = async function getCharacters() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'characters',
+                skipCacheCheck: false,
+                cache: this._charactersCache,
+                body: { take: 100, include: { talents: true, ascensions: true } },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getArtifacts = async function getArtifacts(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _charactersCache that it saves up on a request;
-            if (this._artifactsCache.has(null) && !options)
-                return this._artifactsCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'artifacts', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._artifactsCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._artifactsCache.set(d.name, d);
-                }
-            }
-            return data?.data;
+        this.getArtifacts = async function getArtifacts() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'artifacts',
+                skipCacheCheck: false,
+                cache: this._artifactsCache,
+                body: { take: 100 },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getArtifactSets = async function getArtifacts(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _charactersCache that it saves up on a request;
-            if (this._artifactSetsCache.has(null) && !options)
-                return this._artifactSetsCache.get(null);
-            //@ts-ignore
-            if (options?.include)
-                options.include = JSON.stringify(options.include);
-            //@ts-ignore
-            if (options?.select)
-                options.select = JSON.stringify(options.select);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'artifactSets', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._artifactSetsCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._artifactSetsCache.set(d.name, d);
-                }
-            }
-            return data?.data;
+        this.getArtifactSets = async function getArtifacts() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'artifacts',
+                skipCacheCheck: false,
+                cache: this._artifactSetsCache,
+                body: { take: 100 },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getWeapon = async function getWeapon(id, 
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //checking if cache has that character
-            if (this._weaponsCache.has(id) && !options)
-                return this._weaponsCache.get(id);
-            //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'weapon/' + id, {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //if data has been returned(aka not null) and there are no custom options, set cache
-                if (this._cache && ((!options && data.data) || options?.cache))
-                    this._weaponsCache.set(id, data.data);
-            }
-            return data?.data;
+        this.getWeapon = async function getWeapon(id) {
+            let data = await this.baseRequest({
+                endpoint: 'weapon',
+                skipCacheCheck: false,
+                params: { id },
+                cache: this._weaponsCache,
+            });
+            if (data)
+                return data;
+            return undefined;
         };
-        this.getWeapons = async function getWeapons(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _cweaponsCache that it saves up on a request;
-            if (this._weaponsCache.has(null) && !options)
-                return this._weaponsCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'weapons', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._weaponsCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._weaponsCache.set(d.id, d);
-                }
-            }
-            return data?.data;
+        this.getWeapons = async function getWeapons() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'weapons',
+                skipCacheCheck: false,
+                cache: this._weaponsCache,
+                body: { take: 100, include: { weaponAscensions: true } },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getRegion = async function getRegion(id, 
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //checking if cache has that character
-            if (this._regionsCache.has(id) && !options)
-                return this._regionsCache.get(id);
-            //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'region/' + id, {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //if data has been returned(aka not null) and there are no custom options, set cache
-                if (this._cache && ((!options && data.data) || options?.cache))
-                    this._regionsCache.set(id, data.data);
-            }
-            return data?.data;
+        this.getRegion = async function getRegion(id) {
+            let data = await this.baseRequest({
+                endpoint: 'region',
+                params: { id },
+                skipCacheCheck: false,
+                cache: this._regionsCache,
+            });
+            if (data)
+                return data;
+            return undefined;
         };
-        this.getRegions = async function getRegions(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _regionCache that it saves up on a request;
-            if (this._regionsCache.has(null) && !options)
-                return this._regionsCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'regions', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._regionsCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._regionsCache.set(d.id, d);
-                }
-            }
-            return data?.data;
+        this.getRegions = async function getRegions() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'regions',
+                skipCacheCheck: false,
+                cache: this._regionsCache,
+                body: { take: 100 },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getElement = async function getElement(id, 
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //checking if cache has that character
-            if (this._elementsCache.has(id) && !options)
-                return this._elementsCache.get(id);
-            //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'element/' + id, {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //if data has been returned(aka not null) and there are no custom options, set cache
-                if (this._cache && ((!options && data.data) || options?.cache))
-                    this._elementsCache.set(id, data.data);
-            }
-            return data?.data;
+        this.getElement = async function getElement(id) {
+            let data = await this.baseRequest({
+                endpoint: 'element',
+                params: { id },
+                skipCacheCheck: false,
+                cache: this._elementsCache,
+            });
+            if (data)
+                return data;
+            return undefined;
         };
-        this.getElements = async function getElements(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _elementsCache that it saves up on a request;
-            if (this._elementsCache.has(null) && !options)
-                return this._elementsCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'elements', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._elementsCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._elementsCache.set(d.id, d);
-                }
-            }
-            return data?.data;
+        this.getElements = async function getElements() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'elements',
+                skipCacheCheck: false,
+                cache: this._elementsCache,
+                body: { take: 100 },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getTalent = async function getTalent(id, 
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //checking if cache has that character
-            if (this._talentsCache.has(id) && !options)
-                return this._talentsCache.get(id);
-            //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'talent/' + id, {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //if data has been returned(aka not null) and there are no custom options, set cache
-                if (this._cache && ((!options && data.data) || options?.cache))
-                    this._talentsCache.set(id, data.data);
-            }
-            return data?.data;
+        this.getTalent = async function getTalent(id) {
+            let data = await this.baseRequest({
+                endpoint: 'talent',
+                params: { id },
+                skipCacheCheck: false,
+                cache: this._talentsCache,
+            });
+            if (data)
+                return data;
+            return undefined;
         };
-        this.getTalents = async function getTalents(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _talentsCache that it saves up on a request;
-            if (this._talentsCache.has(null) && !options)
-                return this._talentsCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'talents', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._talentsCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._talentsCache.set(d.id, d);
-                }
-            }
-            return data?.data;
+        this.getTalents = async function getTalents() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'talents',
+                skipCacheCheck: false,
+                cache: this._talentsCache,
+                body: { take: 100 },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        this.getCharacterProfile = async function getCharacterProfile(id, 
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //checking if cache has that character
-            if (this._charactersProfilesCache.has(id) && !options)
-                return this._charactersProfilesCache.get(id);
-            //checking for quota, if its lower than 4, wait until next reset
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'characterProfile/' + id, {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //if data has been returned(aka not null) and there are no custom options, set cache
-                if (this._cache && ((!options && data.data) || options?.cache))
-                    this._charactersProfilesCache.set(id, data.data);
-            }
-            return data?.data;
+        this.getCharacterProfile = async function getCharacterProfile(id) {
+            let data = await this.baseRequest({
+                endpoint: 'characterProfile',
+                params: { id },
+                skipCacheCheck: false,
+                cache: this._charactersProfilesCache,
+            });
+            if (data)
+                return data;
+            return undefined;
         };
-        this.getCharacterProfiles = async function getCharacterProfiles(
-        /**
-         * Options:
-         *
-         */
-        options) {
-            //ensures that if theres already been a search on _charactersProfilesCache that it saves up on a request;
-            if (this._charactersProfilesCache.has(null) && !options)
-                return this._charactersProfilesCache.get(null);
-            //quota checker, if quota is lower than 4, await for next reset before attempting it.
-            if (this._quota < 4)
-                await this._retry(Math.ceil(this._reset) - Math.ceil(Date.now() / 1000));
-            let data = undefined;
-            try {
-                data = await this._queue.push(async () => {
-                    return await axios.get(this.base + 'characterProfiles', {
-                        headers: {
-                            Authorization: 'Bearer ' + this._token,
-                        },
-                        params: {
-                            ...options,
-                        },
-                    });
-                });
-            }
-            catch (er) {
-                this._errorHandler(er);
-            }
-            if (this._errorHandler(data))
-                return;
-            if (data) {
-                if (data.headers['x-ratelimit-remaining'] !== undefined)
-                    this._quota = data.headers['x-ratelimit-remaining'];
-                if (data.headers['x-ratelimit-limit'] !== undefined)
-                    this._quotaMax = data.headers['x-ratelimit-limit'];
-                if (data.headers['x-ratelimit-reset'] !== undefined)
-                    this._reset = data.headers['x-ratelimit-reset'];
-                //setting cache on normal request
-                if (this._cache && ((!options && data.data) || options?.cache)) {
-                    this._charactersProfilesCache.set(null, data.data);
-                    for (let d of data.data)
-                        this._charactersProfilesCache.set(d.id, d);
-                }
-            }
-            return data?.data;
+        this.getCharacterProfiles = async function getCharacterProfiles() {
+            let data = await this.setSkips(this.baseRequest.bind(this), {
+                endpoint: 'characterProfiles',
+                skipCacheCheck: false,
+                cache: this._charactersCache,
+                body: { take: 100 },
+            });
+            if (data && data.length)
+                return data;
+            return undefined;
         };
-        if (options?.aggressive) {
-            setTimeout(() => {
-                this.cacheAll().then((d) => {
-                    if (!options?.silent)
-                        console.log(d
-                            ? '[TeyvatLib]: Cached all entries'
-                            : '[TeyvatLib]: Failed to cache all entries');
-                });
-            }, 30000);
-        }
     }
 }
 exports.default = Teyvat;
