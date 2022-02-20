@@ -700,7 +700,7 @@ export default class Teyvat extends EventEmitter {
       let data = await this.setSkips(this.baseRequest.bind(this), {
         endpoint: 'characterProfiles',
         skipCacheCheck: false,
-        cache: this._charactersCache,
+        cache: this._charactersProfilesCache,
         body: { take: 100 },
       });
       if (data && data.length) return data as teyvatdev.CharacterProfile[];
