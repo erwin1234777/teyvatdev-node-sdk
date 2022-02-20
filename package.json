@@ -1,6 +1,6 @@
 {
   "name": "@teyvatdev/node-sdk",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Unofficial Genshin API Wrapper (Teyvat API)",
   "main": "index.js",
   "scripts": {
