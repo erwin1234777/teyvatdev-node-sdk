@@ -423,7 +423,8 @@ export default class Teyvat extends EventEmitter {
         if (!param.dontCache && data.data) {
           param.cache.set(param.name ? param.name : null, data.data);
           if (data.data.length)
-            for (let d of data.data) if (d.name) param.cache.set(d.name, d);
+            for (let d of data.data)
+              if (d.name || d.id) param.cache.set(d.name ?? d.id, d);
         }
       }
       return data?.data as undefined | any;
