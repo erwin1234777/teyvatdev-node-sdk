@@ -331,8 +331,8 @@ class Teyvat extends events_1.EventEmitter {
                     param.cache.set(param.name ? param.name : null, data.data);
                     if (data.data.length)
                         for (let d of data.data)
-                            if (d.name)
-                                param.cache.set(d.name, d);
+                            if (d.name || d.id)
+                                param.cache.set(d.name ?? d.id, d);
                 }
             }
             return data?.data;
@@ -599,7 +599,7 @@ class Teyvat extends events_1.EventEmitter {
             let data = await this.setSkips(this.baseRequest.bind(this), {
                 endpoint: 'characterProfiles',
                 skipCacheCheck: false,
-                cache: this._charactersCache,
+                cache: this._charactersProfilesCache,
                 body: { take: 100 },
             });
             if (data && data.length)
